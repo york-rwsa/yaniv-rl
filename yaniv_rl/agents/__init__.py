@@ -1,0 +1,2 @@
+from yaniv_rl.agents.a2c_agent_pytorch import A2CAgentPytorch
+from yaniv_rl.agents.yaniv_human_agent import YanivHumanAgent
