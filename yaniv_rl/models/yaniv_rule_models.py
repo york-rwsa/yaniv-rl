@@ -2,7 +2,7 @@ import numpy as np
 import rlcard
 
 from rlcard.models.model import Model
-import yaniv_rl.utils as utils
+from yaniv_rl import utils
 
 from operator import methodcaller
 

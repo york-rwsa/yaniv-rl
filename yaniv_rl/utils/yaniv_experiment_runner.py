@@ -23,6 +23,8 @@ class ExperimentRunner:
         config,
         training_agent,
         vs_agent,
+        feed_function,
+        save_function
     ):
         self.save_dir = "{}/{}".format(base_dir, datetime.now().strftime("%Y%m%d"))
         self.log_dir = os.path.join(self.save_dir, "logs/")
@@ -45,38 +47,48 @@ class ExperimentRunner:
         self.logger.log(str(config))
         self.stat_logger = YanivStatLogger(self.logger)
 
+        self.feed_function = feed_function
+        self.save_function = save_function
+
+    def feed_game(self, agent, trajectories, player_id):
+        self.feed_function(agent, trajectories[player_id])
+        
+        if self.config.get("feed_both_games"):
+            other_traj = trajectories[player_id + 1 % len(self.training_agents)]
+            if self.training_agents[player_id + 1 % len(self.training_agents)].use_raw:
+                self.feed_function(agent, 
+                    list(
+                        map(
+                            lambda t: [t[0], utils.ACTION_SPACE[t[1]], *t[2:]],
+                            other_traj,
+                        )
+                    )
+                )
+            else:
+                self.feed_function(agent, other_traj)
+
     def run_training(self, episode_num, eval_every, eval_vs, eval_num):
         for episode in trange(episode_num, desc="Episodes", file=sys.stdout):
             # Generate data from the environment
             trajectories, _ = self.env.run(is_training=True)
             self.stat_logger.add_game(trajectories, self.env, 0)
 
-            self.agent.feed_game(trajectories[0])
-            if self.config.get("feed_both_games"):
-                if self.training_agents[1].use_raw:
-                    self.agent.feed_game(
-                        list(
-                            map(
-                                lambda t: [t[0], utils.ACTION_SPACE[t[1]], *t[2:]],
-                                trajectories[1],
-                            )
-                        )
-                    )
-                else:
-                    self.agent.feed_game(trajectories[1])
-
+            self.feed_game(self.agent, trajectories, 0)
+            if self.config['feed_both_agents']:
+                self.feed_game(self.training_agents[1], trajectories, 1)
+            
             if episode != 0 and episode % self.log_every == 0:
                 self.stat_logger.log_stats()
 
             if episode != 0 and episode % self.save_every == 0:
-                self.agent.save(self.model_dir)
+                self.save_function(self.agent, self.model_dir)
 
             if episode != 0 and episode % eval_every == 0:
                 self.logger.log("\n\n########## Evaluation {} ##########".format(episode))
                 self.evaluate_perf(eval_vs, eval_num)
             
         self.evaluate_perf(eval_vs, eval_num)
-        self.agent.save(self.model_dir)
+        self.save_function(self.agent, self.model_dir)
 
     def evaluate_perf(self, eval_vs, eval_num):
         if isinstance(eval_vs, list):

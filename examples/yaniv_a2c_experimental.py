@@ -6,7 +6,7 @@ from yaniv_rl.envs import make
 from yaniv_rl.utils import redirect_to_tqdm
 from yaniv_rl.models.yaniv_rule_models import YanivNoviceRuleAgent
 from yaniv_rl.agents import A2CAgentPytorch
-from yaniv_experiment_runner import ExperimentRunner
+from yaniv_rl.utils import ExperimentRunner
 
 import wandb
 default_config = {
@@ -18,6 +18,7 @@ default_config = {
     "negative_score_cutoff": 30,
     "seed": 0,
     "feed_both_games": True,
+    "feed_both_agents": False
 }
 
 default_hyperparams = {
@@ -62,6 +63,12 @@ def main():
     
     wandb.watch([agent.actor, agent.critic])
 
+    def agent_feed(agent, trajectories):
+        agent.feed_game(trajectories)
+
+    def save_function(agent, model_dir):
+        agent.save(model_dir)
+
     e = ExperimentRunner(
         env,
         eval_env,
@@ -71,6 +78,8 @@ def main():
         config=config,
         training_agent=agent,
         vs_agent=agent,
+        feed_function=agent_feed,
+        save_function=save_function
     )
 
     e.run_training(
