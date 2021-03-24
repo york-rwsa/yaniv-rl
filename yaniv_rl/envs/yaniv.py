@@ -32,6 +32,12 @@ class YanivEnv(Env):
         super().__init__(config)
         self.state_shape = [6, 52]
 
+        _game_config = self.default_game_config.copy()
+        for key in config:
+            if key in _game_config:
+                _game_config[key] = config[key]
+        self.game.configure(_game_config)
+
     def _extract_state(self, state):
         if self.game.is_over():
             return {

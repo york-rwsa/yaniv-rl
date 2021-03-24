@@ -1,0 +1,35 @@
+program: yaniv_a2c_experimental.py
+method: bayes
+metric:
+  goal: maximize
+  name: eval_RandomAgent_win_rate
+parameters:
+  optimizer_type:
+    values:
+      - adam
+      - rmsprop
+    distribution: categorical
+  epsilon_decay:
+    max: 0.99
+    min: 0.495
+    distribution: uniform
+  reward_gamma:
+    max: 1
+    min: 0.25
+    distribution: uniform
+  entropy_reg:
+    max: 0.02
+    min: 0.005
+    distribution: uniform
+  batch_size:
+    max: 200
+    min: 50
+    distribution: int_uniform
+  critic_lr:
+    max: 0.002
+    min: 0.0005
+    distribution: uniform
+  actor_lr:
+    max: 0.002
+    min: 0.0005
+    distribution: uniform

@@ -1,10 +1,10 @@
-
-from yaniv_rl.utils import init_deck
 from yaniv_rl.game.card import YanivCard
 from typing import List
 
 class YanivDealer(object):
     def __init__(self, np_random):
+        from yaniv_rl.utils import init_deck
+
         self.np_random = np_random
         self.deck = init_deck() # type: List[YanivCard]
         self.shuffle()
