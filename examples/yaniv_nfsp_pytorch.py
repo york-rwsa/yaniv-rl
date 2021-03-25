@@ -26,8 +26,8 @@ default_config = {
     "max_negative_reward": -1,
     "negative_score_cutoff": 30,
     "seed": 0,
-    "feed_both_games": False,
-    "feed_both_agents": True
+    "feed_both_games": True,
+    "feed_both_agents": False
 }
 default_hyperparams = dict(
     hidden_layers_sizes=[512, 1024, 2048, 1024, 512],
@@ -46,7 +46,7 @@ default_hyperparams = dict(
 wandb.init(config={**default_config, **default_hyperparams}, project="yaniv_nfsp")
 
 load_model = None
-load_model = "/home/jippo/Code/yaniv/yaniv-rl/examples/yaniv_nfsp_pytorch/20210324_10000/model/model_1.pth"
+load_model = "/home/jippo/Code/yaniv/yaniv-rl/examples/yaniv_nfsp_pytorch/20210324_20000/model/model_1.pth"
 load_scope = "nfsp0"
 
 def main():
@@ -102,7 +102,7 @@ def main():
         base_dir="yaniv_nfsp_pytorch",
         config=config,
         training_agent=agents[0],
-        vs_agent=agents[1],
+        vs_agent=rule_agent,
         feed_function=agent_feed,
         save_function=save_function
     )
@@ -110,7 +110,7 @@ def main():
 
 
     e.run_training(
-        episode_num=10000,
+        episode_num=50000,
         eval_every=200,
         eval_vs=[random_agent, rule_agent],
         eval_num=100

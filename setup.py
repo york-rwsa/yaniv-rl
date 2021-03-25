@@ -11,7 +11,11 @@ setuptools.setup(
         'rlcard>=0.2.5',
         'numpy>=1.16.3',
         'termcolor',
-        'tqdm'
+        'tqdm',
+        'gym',
+        'pettingzoo',
+        'ray[rllib]',
+        'supersuit'
     ],
     requires_python='>=3.6',
     classifiers=[
