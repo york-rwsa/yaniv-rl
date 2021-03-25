@@ -18,7 +18,8 @@ default_config = {
     "negative_score_cutoff": 30,
     "seed": 0,
     "feed_both_games": True,
-    "feed_both_agents": False
+    "feed_both_agents": False,
+    "single_step_actions": True
 }
 
 default_hyperparams = {
@@ -40,6 +41,7 @@ default_hyperparams = {
     "epsilon_end": 0.01,
     "epsilon_decay": 0.578,
     "train_every_n_episodes": 1,
+    "use_cuda": True
 }
 wandb.init(config={**default_config, **default_hyperparams}, project="yaniv_a2c")
 
@@ -58,7 +60,7 @@ def main():
     agent = A2CAgentPytorch(
         action_dim=env.action_num, state_shape=env.state_shape, **hyperparams
     )
-    rule_agent = YanivNoviceRuleAgent()
+    rule_agent = YanivNoviceRuleAgent(single_step=config['single_step_actions'])
     random_agent = RandomAgent(action_num=env.action_num)
     
     wandb.watch([agent.actor, agent.critic])
@@ -83,7 +85,7 @@ def main():
     )
 
     e.run_training(
-        episode_num=100000,
+        episode_num=10000,
         eval_every=200,
         eval_vs=[random_agent, rule_agent],
         eval_num=100

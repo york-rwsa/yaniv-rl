@@ -166,8 +166,6 @@ class YanivRound(object):
             utils.cards_to_list(cards)
             for cards in self.known_cards[player_id:] + self.known_cards[:player_id]
         ]
-
-        state["legal_actions"] = self.get_legal_actions(players, player_id)
         # also indexed from current player
         state["hand_lengths"] = [
             len(p.hand) for p in players[player_id:] + players[:player_id]

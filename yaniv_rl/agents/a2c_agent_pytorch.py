@@ -213,20 +213,30 @@ class A2CAgentPytorch(object):
 
     # choose an action based on state with random noise added for exploration in training
     def exploration_action(self, state, legal_actions):
-        softmax_action = self._softmax_action(state)
         epsilon = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * np.exp(
             -1.0 * self.n_steps * self.epsilon_decay
         )
         if np.random.rand() < epsilon:
             action = np.random.choice(legal_actions)
         else:
-            action = np.argmax(remove_illegal(softmax_action, legal_actions))
+            softmax_action = self._softmax_action(state)
+            action = self._pick_action(softmax_action, legal_actions)
+
         return action
 
     # choose an action based on state for execution
     def action(self, state, legal_actions):
         softmax_action = self._softmax_action(state)
-        action = np.argmax(remove_illegal(softmax_action, legal_actions))
+        return self._pick_action(softmax_action, legal_actions)
+
+    def _pick_action(self, softmax_action, legal_actions):
+        # ie if all probs are 0
+        legal_probs = remove_illegal(softmax_action, legal_actions)
+        if not np.any(legal_probs):
+            action = np.random.choice(legal_actions)
+        else:
+            action = np.argmax(legal_probs)
+
         return action
 
     # evaluate value for a state-action pair

@@ -13,11 +13,46 @@ class YanivNoviceRuleAgent(object):
 
     """
 
-    def __init__(self):
+    def __init__(self, single_step=False):
         self.use_raw = True
+        self.single_step = single_step
+
+    def step(self, state):
+        if self.single_step:
+            return self._step_single(state)
+        else:
+            return self._step_multi(state)
 
     @classmethod
-    def step(cls, state):
+    def _step_single(cls, state):
+        legal_actions = state["raw_legal_actions"]
+        raw_state = state["raw_obs"]
+
+        # picking up
+
+        discard_actions = []
+
+        if utils.YANIV_ACTION in legal_actions:
+            if cls.should_yaniv(raw_state):
+                discard_actions.append(utils.YANIV_ACTION)
+
+        legal_discards = list(
+            set(a[0] for a in legal_actions if a != utils.YANIV_ACTION)
+        )
+        discard_actions.extend(cls.best_discards(legal_discards))
+
+        pickup_actions = cls.best_pickup_actions(raw_state["discard_pile"][-1])
+
+        discard_action = np.random.choice(discard_actions)
+        if discard_action == utils.YANIV_ACTION:
+            return discard_action
+
+        pickup_action = np.random.choice(pickup_actions)
+
+        return (discard_action, pickup_action)
+
+    @classmethod
+    def _step_multi(cls, state):
         """Predict the action given the current state.
             Novice strategy:
                 Discard stage:
@@ -33,40 +68,48 @@ class YanivNoviceRuleAgent(object):
         Returns:
             action (int): the action predicted
         """
-        legal_actions = state['raw_legal_actions']
-        raw_state = state['raw_obs']
+        legal_actions = state["raw_legal_actions"]
+        raw_state = state["raw_obs"]
 
         # picking up
         actions = []
         if utils.DRAW_CARD_ACTION in legal_actions:
-            actions = cls.best_pickup_actions(raw_state)
+            actions = cls.best_pickup_actions(raw_state["discard_pile"][-2])
 
         else:
             # discarding
             if utils.YANIV_ACTION in legal_actions:
                 if cls.should_yaniv(raw_state):
                     actions.append(utils.YANIV_ACTION)
-        
-            actions.extend(cls.best_discards(raw_state, legal_actions))
+
+            actions.extend(
+                cls.best_discards(
+                    [a for a in state["legal_actions"] if a != utils.YANIV_ACTION]
+                )
+            )
 
         # if for some reason no actions are decided to be taken
         # then just pick a random legal action
         if len(actions) == 0:
             actions = legal_actions
-        
+
         return np.random.choice(actions)
 
     @staticmethod
-    def best_pickup_actions(state):
-        """ Returns the best pickup actions as follows:
-        either 
+    def best_pickup_actions(availcards):
+        """Returns the best pickup actions as follows:
+        either
         [draw_card, pickup_top/bottom_card] if bottom/top card is lte 2.
         [draw_card] otherwise
         """
         actions = [utils.DRAW_CARD_ACTION]
 
-        availcards = state["discard_pile"][-2]
-        cardscores = list(map(methodcaller('get_score'), map(utils.make_card_from_str, [availcards[0], availcards[-1]])))
+        cardscores = list(
+            map(
+                methodcaller("get_score"),
+                map(utils.make_card_from_str, [availcards[0], availcards[-1]]),
+            )
+        )
         minscore = min(cardscores)
         # if a card that scores less than 3 pick it up
         if minscore <= 2:
@@ -81,10 +124,7 @@ class YanivNoviceRuleAgent(object):
         return actions
 
     @staticmethod
-    def best_discards(state, legal_actions):    
-        legal_discard_actions = [
-            a for a in state["legal_actions"] if a != utils.YANIV_ACTION
-        ]
+    def best_discards(legal_discard_actions):
         discard_scores = list(map(utils.score_discard_action, legal_discard_actions))
         max_discard = max(discard_scores)
         best_discards = [
@@ -96,7 +136,7 @@ class YanivNoviceRuleAgent(object):
 
     @staticmethod
     def should_yaniv(state) -> bool:
-        """ decides whether or not yaniv is a good idea
+        """decides whether or not yaniv is a good idea
         True if should yaniv
         False if should not
         """
@@ -111,9 +151,9 @@ class YanivNoviceRuleAgent(object):
             if handscore < known_score:
                 return True
         else:
-            # yaniv anyway 
+            # yaniv anyway
             return True
-        
+
         return False
 
     def eval_step(self, state):

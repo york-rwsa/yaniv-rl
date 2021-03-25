@@ -101,6 +101,7 @@ class YanivGame(object):
         if not self._single_step_actions or action == utils.YANIV_ACTION:
             return self._step(action)
         
+        assert isinstance(action, tuple), "in single step actions the action must be a tuple"
         cur_player = self.round.current_player
         _, next_player = self._step(action[0])
         assert cur_player == next_player
@@ -145,6 +146,7 @@ class YanivGame(object):
         state = self.round.get_state(self.players, player_id)
         state["player_num"] = self.get_player_num()
         state["current_player"] = self.round.current_player
+        state["legal_actions"] = self._get_legal_actions(player_id)
         return state
 
     def get_payoffs(self):
@@ -186,12 +188,12 @@ class YanivGame(object):
         Returns:
             (list): A list of legal actions
         """
+        return self._get_legal_actions(self.round.current_player)
 
-        legal_actions = self.round.get_legal_actions(self.players, self.round.current_player)
+    def _get_legal_actions(self, player_id):
+        legal_actions = self.round.get_legal_actions(self.players, player_id)
         if not self._single_step_actions:
             return legal_actions
-
-        assert self.round.discarding, "idk something went wrong and everything is out of sync whoops"
 
         joint_legal_actions = []
         if utils.YANIV_ACTION in legal_actions:

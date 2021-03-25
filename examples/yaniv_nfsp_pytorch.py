@@ -18,6 +18,7 @@ from datetime import datetime
 import sys
 
 import wandb
+
 default_config = {
     "end_after_n_deck_replacements": 1,
     "end_after_n_steps": 130,
@@ -27,7 +28,8 @@ default_config = {
     "negative_score_cutoff": 30,
     "seed": 0,
     "feed_both_games": True,
-    "feed_both_agents": False
+    "feed_both_agents": False,
+    "single_step_actions": True,
 }
 default_hyperparams = dict(
     hidden_layers_sizes=[512, 1024, 2048, 1024, 512],
@@ -46,8 +48,9 @@ default_hyperparams = dict(
 wandb.init(config={**default_config, **default_hyperparams}, project="yaniv_nfsp")
 
 load_model = None
-load_model = "/home/jippo/Code/yaniv/yaniv-rl/examples/yaniv_nfsp_pytorch/20210324_20000/model/model_1.pth"
+# load_model = "/home/jippo/Code/yaniv/yaniv-rl/examples/yaniv_nfsp_pytorch/20210324_20000/model/model_1.pth"
 load_scope = "nfsp0"
+
 
 def main():
     wandb_config = wandb.config
@@ -77,13 +80,14 @@ def main():
             state_dict = torch.load(load_model)
             policy_dict = state_dict[load_scope]
             agent.policy_network.load_state_dict(policy_dict)
-            q_key = load_scope + '_dqn_q_estimator'
+            q_key = load_scope + "_dqn_q_estimator"
             agent._rl_agent.q_estimator.qnet.load_state_dict(state_dict[q_key])
-            target_key = load_scope + '_dqn_target_estimator'
-            agent._rl_agent.target_estimator.qnet.load_state_dict(state_dict[target_key])
+            target_key = load_scope + "_dqn_target_estimator"
+            agent._rl_agent.target_estimator.qnet.load_state_dict(
+                state_dict[target_key]
+            )
 
-
-    rule_agent = YanivNoviceRuleAgent()
+    rule_agent = YanivNoviceRuleAgent(single_step=config["single_step_actions"])
     random_agent = RandomAgent(action_num=env.action_num)
 
     def agent_feed(agent, trajectories):
@@ -91,8 +95,9 @@ def main():
             agent.feed(transition)
 
     def save_function(agent, model_dir):
-        torch.save(agent.get_state_dict(), os.path.join(model_dir, "model_{}.pth".format(i)))
-    
+        torch.save(
+            agent.get_state_dict(), os.path.join(model_dir, "model_{}.pth".format(i))
+        )
 
     e = ExperimentRunner(
         env,
@@ -102,18 +107,16 @@ def main():
         base_dir="yaniv_nfsp_pytorch",
         config=config,
         training_agent=agents[0],
-        vs_agent=rule_agent,
+        vs_agent=agents[1],
         feed_function=agent_feed,
-        save_function=save_function
+        save_function=save_function,
     )
-
-
 
     e.run_training(
         episode_num=50000,
         eval_every=200,
         eval_vs=[random_agent, rule_agent],
-        eval_num=100
+        eval_num=100,
     )
 
 

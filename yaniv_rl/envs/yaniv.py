@@ -5,27 +5,28 @@ from yaniv_rl.game import Game
 from yaniv_rl import utils
 
 DEFAULT_GAME_CONFIG = {
-    'end_after_n_deck_replacements': 0,
-    # zero otherwise
-    'end_after_n_steps': 100,
-    'early_end_reward': -1,
-    'use_scaled_negative_reward': True,
-    'max_negative_reward': -1,
-    "negative_score_cutoff": 50
+    "end_after_n_deck_replacements": 0,
+    "end_after_n_steps": 100,
+    "early_end_reward": -1,
+    "use_scaled_negative_reward": True,
+    "max_negative_reward": -1,
+    "negative_score_cutoff": 50,
 }
 
 
 def calculate_reward(state, next_state, action):
     if action not in utils.pickup_actions and len(action) > 2:
-        return 0.1 * len(action)/2
+        return 0.1 * len(action) / 2
     else:
         return -0.05
 
+
 # for two player
 class YanivEnv(Env):
-    def __init__(self, config):
+    def __init__(self, config={}):
         self.name = "yaniv"
-        self.game = Game()
+        self.single_step = config.get("single_step_actions", False)
+        self.game = Game(single_step_actions=self.single_step)
         self.default_game_config = DEFAULT_GAME_CONFIG
         self.reward_func = calculate_reward
         # configure game
@@ -68,27 +69,32 @@ class YanivEnv(Env):
             known_cards,
             unknown_cards,
         ]
-        opponent_hand_size = np.zeros(52)
-        opponent_hand_size[len(next_player.hand)] = 1
-        obs = list(map(utils.encode_cards, card_obs)) + [opponent_hand_size]
+        card_obs = np.ravel(list(map(utils.encode_cards, card_obs)))
 
-        extracted_state = {"obs": np.array(obs), "legal_actions": self._get_legal_actions()}
+        opponent_hand_size = np.zeros(6)
+        opponent_hand_size[len(next_player.hand)] = 1
+
+        obs = np.concatenate((card_obs, opponent_hand_size))
+
+        extracted_state = {"obs": obs, "legal_actions": self._get_legal_actions()}
 
         if self.allow_raw_data:
-            extracted_state['raw_obs'] = state
-            extracted_state['raw_legal_actions'] = [
-                a for a in state['legal_actions']]
+            extracted_state["raw_obs"] = state
+            extracted_state["raw_legal_actions"] = [a for a in state["legal_actions"]]
 
         if self.record_action:
-            extracted_state['action_record'] = self.action_recorder
-        
+            extracted_state["action_record"] = self.action_recorder
+
         return extracted_state
 
     def get_payoffs(self):
         return np.array(self.game.get_payoffs())
 
     def _decode_action(self, action_id):
-        return utils.ACTION_LIST[action_id]
+        if self.single_step:
+            return utils.JOINED_ACTION_LIST[action_id]
+        else:
+            return utils.ACTION_LIST[action_id]
 
         # legal_ids = self._get_legal_actions()
         # if action_id in legal_ids:
@@ -103,7 +109,7 @@ class YanivEnv(Env):
             legal_ids = [utils.JOINED_ACTION_SPACE[action] for action in legal_actions]
         else:
             legal_ids = [utils.ACTION_SPACE[action] for action in legal_actions]
-            
+
         return legal_ids
 
     def _load_model(self):
@@ -127,9 +133,9 @@ class YanivEnv(Env):
         next_state, player_id = self.game.step(action)
 
         return self._extract_state(next_state), player_id
-    
+
     def run(self, is_training=False):
-        '''
+        """
         Run a complete game, either for evaluation or training RL agent.
 
         Args:
@@ -143,9 +149,9 @@ class YanivEnv(Env):
 
         Note: The trajectories are 3-dimension list. The first dimension is for different players.
               The second dimension is for different transitions. The third dimension is for the contents of each transiton
-        '''
+        """
         if self.single_agent_mode:
-            raise ValueError('Run in single agent not allowed.')
+            raise ValueError("Run in single agent not allowed.")
 
         trajectories = [[] for _ in range(self.player_num)]
         state, player_id = self.reset()
@@ -161,14 +167,18 @@ class YanivEnv(Env):
                 action, _ = self.agents[player_id].eval_step(state)
 
             # Environment steps
-            next_state, next_player_id = self.step(action, self.agents[player_id].use_raw)
+            next_state, next_player_id = self.step(
+                action, self.agents[player_id].use_raw
+            )
             # Save action
             trajectories[player_id].append(action)
 
             decoded_action = action
             if not self.agents[player_id].use_raw:
                 decoded_action = self._decode_action(action)
-            trajectories[player_id].append(self.reward_func(state, next_state, decoded_action))
+            trajectories[player_id].append(
+                self.reward_func(state, next_state, decoded_action)
+            )
 
             # Set the state and player
             state = next_state
@@ -191,8 +201,9 @@ class YanivEnv(Env):
 
         return trajectories, payoffs
 
+
 def reorganize(trajectories, payoffs):
-    ''' Reorganize the trajectory to make it RL friendly
+    """Reorganize the trajectory to make it RL friendly
 
     Args:
         trajectory (list): A list of trajectories
@@ -201,14 +212,14 @@ def reorganize(trajectories, payoffs):
     Returns:
         (list): A new trajectories that can be fed into RL algorithms.
 
-    '''
+    """
     player_num = len(trajectories)
     new_trajectories = [[] for _ in range(player_num)]
 
     for player in range(player_num):
-        for i in range(0, len(trajectories[player])-3, 3):
-            transition = trajectories[player][i:i+4].copy()
-            if i ==len(trajectories[player])-3:
+        for i in range(0, len(trajectories[player]) - 3, 3):
+            transition = trajectories[player][i : i + 4].copy()
+            if i == len(trajectories[player]) - 3:
                 transition[2] = payoffs[player]
                 transition.append(True)
             else:

@@ -50,6 +50,8 @@ class ExperimentRunner:
         self.feed_function = feed_function
         self.save_function = save_function
 
+        self.action_space = utils.JOINED_ACTION_SPACE if config['single_step_actions'] else utils.ACTION_SPACE
+
     def feed_game(self, agent, trajectories, player_id):
         self.feed_function(agent, trajectories[player_id])
         
@@ -59,7 +61,7 @@ class ExperimentRunner:
                 self.feed_function(agent, 
                     list(
                         map(
-                            lambda t: [t[0], utils.ACTION_SPACE[t[1]], *t[2:]],
+                            lambda t: [t[0], self.action_space[t[1]], *t[2:]],
                             other_traj,
                         )
                     )
