@@ -30,7 +30,7 @@ class YanivEnv(Env):
         self.reward_func = calculate_reward
         # configure game
         super().__init__(config)
-        self.state_shape = [6, 52]
+        self.state_shape = [266]
 
         _game_config = self.default_game_config.copy()
         for key in config:
@@ -99,7 +99,11 @@ class YanivEnv(Env):
 
     def _get_legal_actions(self):
         legal_actions = self.game.get_legal_actions()
-        legal_ids = [utils.ACTION_SPACE[action] for action in legal_actions]
+        if self.game._single_step_actions:
+            legal_ids = [utils.JOINED_ACTION_SPACE[action] for action in legal_actions]
+        else:
+            legal_ids = [utils.ACTION_SPACE[action] for action in legal_actions]
+            
         return legal_ids
 
     def _load_model(self):

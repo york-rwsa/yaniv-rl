@@ -1,3 +1,4 @@
+from itertools import product
 import os
 import json
 from rlcard.envs.vec_env import VecEnv
@@ -28,18 +29,25 @@ pickup_actions = [
 with open(
     os.path.join(ROOT_PATH, "game/jsondata/discard_actions.json"), "r"
 ) as file:
+    ACTION_SPACE = OrderedDict()
+
     DISCARD_ACTIONS = json.load(file, object_pairs_hook=OrderedDict)
     DISCARD_ACTION_LIST = list(DISCARD_ACTIONS.keys())
-
-    ACTION_SPACE = OrderedDict()
     ACTION_SPACE.update(DISCARD_ACTIONS)
 
     for action in pickup_actions:
         ACTION_SPACE.update({action: len(ACTION_SPACE)})
 
     ACTION_SPACE.update({YANIV_ACTION: len(ACTION_SPACE)})
+
     ACTION_LIST = list(ACTION_SPACE.keys())
 
+
+    JOINED_ACTION_LIST = [YANIV_ACTION]
+    for d, p in product(DISCARD_ACTIONS, pickup_actions):
+        JOINED_ACTION_LIST.append((d, p))
+    
+    JOINED_ACTION_SPACE = {a: i for i, a in enumerate(JOINED_ACTION_LIST)}
 
 def get_hand_score(cards: List[YanivCard]) -> int:
     """Judge the score of a given cards set

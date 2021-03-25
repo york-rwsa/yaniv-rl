@@ -1,4 +1,5 @@
 from copy import deepcopy
+from itertools import product
 import numpy as np
 
 from yaniv_rl.game.dealer import YanivDealer
@@ -8,7 +9,7 @@ from yaniv_rl import utils
 
 
 class YanivGame(object):
-    def __init__(self, num_players=2, allow_step_back=False):
+    def __init__(self, num_players=2, single_step_actions=False, allow_step_back=False):
         self.allow_step_back = allow_step_back
         self.np_random = np.random.RandomState()
         self.num_players = num_players
@@ -21,6 +22,8 @@ class YanivGame(object):
         self._use_scaled_negative_reward = False
         self._max_negative_reward = -1
         self._negative_score_cutoff = 50
+
+        self._single_step_actions = single_step_actions
 
     def init_game(self):
         """Initialize players and state
@@ -91,13 +94,23 @@ class YanivGame(object):
             self.history.append((his_dealer, his_players, his_round))
 
         self.actions.append(action)
-        self.round.proceed_round(self.players, action)
-        player_id = self.round.current_player
-        state = self.get_state(player_id)
-
         if self._end_after_n_steps > 0 and len(self.actions) >= self._end_after_n_steps:
             self.round.winner = -1
             self.round.is_over = True
+        
+        if not self._single_step_actions or action == utils.YANIV_ACTION:
+            return self._step(action)
+        
+        cur_player = self.round.current_player
+        _, next_player = self._step(action[0])
+        assert cur_player == next_player
+
+        return self._step(action[1])
+
+    def _step(self, action):
+        self.round.proceed_round(self.players, action)
+        player_id = self.round.current_player
+        state = self.get_state(player_id)
 
         # end the game if repalce deck is required with everyone losing
         if (
@@ -174,8 +187,22 @@ class YanivGame(object):
             (list): A list of legal actions
         """
 
-        return self.round.get_legal_actions(self.players, self.round.current_player)
+        legal_actions = self.round.get_legal_actions(self.players, self.round.current_player)
+        if not self._single_step_actions:
+            return legal_actions
 
+        assert self.round.discarding, "idk something went wrong and everything is out of sync whoops"
+
+        joint_legal_actions = []
+        if utils.YANIV_ACTION in legal_actions:
+            joint_legal_actions.append(utils.YANIV_ACTION)
+            legal_actions.remove(utils.YANIV_ACTION)
+        
+        for d, p in product(legal_actions, utils.pickup_actions):
+            joint_legal_actions.append((d, p))
+
+        return joint_legal_actions
+        
     def get_player_num(self):
         """Return the number of players in Limit Texas Hold'em
 
@@ -184,14 +211,16 @@ class YanivGame(object):
         """
         return self.num_players
 
-    @staticmethod
-    def get_action_num():
+    def get_action_num(self):
         """Return the number of applicable actions
 
         Returns:
             (int): The number of actions.
         """
-        return len(utils.ACTION_LIST)
+        if self._single_step_actions:
+            return len(utils.JOINED_ACTION_LIST)
+        else:
+            return len(utils.ACTION_LIST)
 
     def get_player_id(self):
         """Return the current player's id

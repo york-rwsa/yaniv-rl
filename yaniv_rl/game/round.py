@@ -1,3 +1,4 @@
+from os import execv
 from rlcard.core import Card
 
 from yaniv_rl import utils
@@ -187,7 +188,10 @@ class YanivRound(object):
         self.discard_pile.append([self.dealer.draw_card()])
 
     def get_next_player(self):
-        return (self.current_player + 1) % self.num_players
+        return self._get_next_player(self.current_player)
+
+    def _get_next_player(self, player_id):
+        return (player_id + 1) % self.num_players
 
     def _next_player(self):
         """increments the player counter"""
@@ -266,6 +270,7 @@ class YanivRound(object):
         current_hand = players[self.current_player].hand
 
         toDiscard = [action[i : i + 2] for i in range(0, len(action), 2)]
+        discard_len = len(toDiscard)
 
         cardsToDiscard = []
         for card in current_hand:
@@ -277,6 +282,9 @@ class YanivRound(object):
 
             if len(toDiscard) == 0:
                 break
+            
+        if len(cardsToDiscard) != discard_len:
+            raise Exception("Cannot discard all cards. Trying action {} on hand {}".format(action, current_hand))
 
         for card in cardsToDiscard:
             current_hand.remove(card)
