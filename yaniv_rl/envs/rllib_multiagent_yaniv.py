@@ -11,8 +11,8 @@ from yaniv_rl.game import Game
 DEFAULT_GAME_CONFIG = {
     "end_after_n_deck_replacements": 0,
     "end_after_n_steps": 100,
-    "early_end_reward": -1,
-    "use_scaled_negative_reward": True,
+    "early_end_reward": 0,
+    "use_scaled_negative_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
 }
@@ -49,9 +49,10 @@ class YanivEnv(MultiAgentEnv):
 
         return self._get_observations()
 
-    def step(self, action_dict):
+    def step(self, action_dict, raw_action=False):
         action = action_dict[self._get_player_string(self.current_player)]
-        action = self._decode_action(action)
+        if not raw_action:
+            action = self._decode_action(action)
 
         self.game.step(action)
 
