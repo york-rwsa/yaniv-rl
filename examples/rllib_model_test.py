@@ -56,6 +56,10 @@ env_config = {
     "negative_score_cutoff": 50,
 }
 
+def cuda_avail():
+    import torch
+    print(torch.cuda.is_available())
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-iters", type=int, default=10)
@@ -65,7 +69,11 @@ if __name__ == "__main__":
     parser.add_argument("--random-players", type=int, default=0)
     args = parser.parse_args()
 
+    cuda_avail()
     ray.init(local_mode=True)
+    print("post init")
+    cuda_avail()
+    
 
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)

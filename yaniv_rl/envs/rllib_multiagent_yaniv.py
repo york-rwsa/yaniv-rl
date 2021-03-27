@@ -65,7 +65,15 @@ class YanivEnv(MultiAgentEnv):
                 self._get_player_string(i): payoffs[i] for i in range(self.num_players)
             }
         else:
-            rewards = {p: -0.1 for p in self._get_players()}
+            rewards = {
+                p: (-0.01 if i == self.current_player else 0)
+                for i, p in enumerate(self._get_players())
+            }
+            if len(action) == 2:
+                # reward discarding multiple cards
+                rewards[self._get_player_string(self.current_player)] = (
+                    0.01 * len(action[0]) / 2
+                )
 
         infos = {p: {} for p in self._get_players()}
 
