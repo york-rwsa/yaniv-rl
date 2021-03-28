@@ -1,9 +1,16 @@
+from ray.rllib.agents.ppo.ppo import PPOTrainer
+from ray.rllib.policy import policy
+from ray.rllib.utils.typing import AgentID
+from ray.tune.logger import pretty_print
+from ray.tune.utils.log import Verbosity
+from yaniv_rl.utils.utils import ACTION_SPACE
 import ray
 import torch
 import numpy as np
 from gym.spaces import Box
 
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
+from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
 from ray.rllib.utils.torch_ops import FLOAT_MIN, FLOAT_MAX
 from ray.rllib.utils.framework import try_import_torch
@@ -17,12 +24,11 @@ import argparse
 from yaniv_rl.envs.rllib_multiagent_yaniv import YanivEnv
 from yaniv_rl.models.yaniv_rule_models import YanivNoviceRuleAgent
 
+from ray.tune.integration.wandb import WandbLoggerCallback
 
 torch, nn = try_import_torch()
 
 
-# for available actions check out:
-# https://github.com/ray-project/ray/blob/739f6539836610e3fbaadd3cf9ad7fb9ae1d79f9/rllib/examples/models/parametric_actions_model.py
 class YanivActionMaskModel(TorchModelV2, nn.Module):
     def __init__(self, obs_space, action_space, num_outputs, model_config, name):
         TorchModelV2.__init__(
@@ -47,60 +53,77 @@ class YanivActionMaskModel(TorchModelV2, nn.Module):
         return torch.reshape(self.action_model.value_function(), [-1])
 
 
+def cuda_avail():
+    import torch
+
+    print(torch.cuda.is_available())
+
+
 env_config = {
     "end_after_n_deck_replacements": 0,
-    "end_after_n_steps": 100,
+    "end_after_n_steps": 130,
     "early_end_reward": 0,
     "use_scaled_negative_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
 }
 
-def cuda_avail():
-    import torch
-    print(torch.cuda.is_available())
+
+def policy_mapping_fn(agent_id):
+    if agent_id.endswith("0"):
+        return "policy_1"  # Choose 1 policy for agent_0
+    else:
+        # trains against past versions of self
+        return np.random.choice(
+            ["policy_1", "policy_2", "policy_3", "policy_4"],
+            p=[0.5, 0.5 / 3, 0.5 / 3, 0.5 / 3],
+        )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-iters", type=int, default=10)
-    parser.add_argument("--train", action="store_true")
-    parser.add_argument("--num-workers", type=int, default=2)
-    parser.add_argument("--eval-num", type=int, default=1)
-    parser.add_argument("--random-players", type=int, default=0)
+    parser.add_argument("--eval-num", type=int, default=10)
+    parser.add_argument("--checkpoint", type=str, default="")
     args = parser.parse_args()
 
+    print("cuda: ")
     cuda_avail()
+
     ray.init(local_mode=True)
-    print("post init")
-    cuda_avail()
-    
 
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
 
+    env = YanivEnv(env_config)
+    obs_space = env.observation_space
+    act_space = env.action_space
     config = {
         "env": "yaniv",
         "env_config": env_config,
         "model": {
             "custom_model": "yaniv_mask",
+            "fcnet_hiddens": [512, 512],
         },
         "framework": "torch",
-        "num_gpus": 1
+        "num_gpus": 1,
+        "num_workers": 0,
+        "batch_mode": "complete_episodes",
+        "log_level": "INFO",
+        "multiagent": {
+            "policies": {
+                "policy_1": (None, obs_space, act_space, {}),
+                "policy_2": (None, obs_space, act_space, {}),
+                "policy_3": (None, obs_space, act_space, {}),
+                "policy_4": (None, obs_space, act_space, {}),
+            },
+            "policy_mapping_fn": policy_mapping_fn,
+            "policies_to_train": ["policy_1"],
+        },
     }
 
-    stop = {"training_iteration": args.num_iters}
+    best_checkpoint = "/home/jippo/ray_results/YanivTrainer_2021-03-28_13-22-27/YanivTrainer_yaniv_4258f_00000_0_2021-03-28_13-22-27/checkpoint_340/checkpoint_340/checkpoint-340"
 
-    if args.train:
-        config["num_workers"] = args.num_workers
-        results = tune.run("PPO", config=config, stop=stop, checkpoint_at_end=True)
-        best_checkpoint = results.get_best_checkpoint(
-            trial=results.get_best_trial(metric="episode_reward_mean", mode="max"),
-            metric="episode_reward_mean",
-            mode="max",
-        )
-    else:
-        best_checkpoint = "/home/jippo/ray_results/YanivTrainer_2021-03-28_13-22-27/YanivTrainer_yaniv_4258f_00000_0_2021-03-28_13-22-27/checkpoint_60/checkpoint_60/checkpoint-60"
-
+    config["explore"] = False
     agent = ppo.PPOTrainer(config=config, env="yaniv")
     agent.restore(best_checkpoint)
 
@@ -108,6 +131,8 @@ if __name__ == "__main__":
 
     env = YanivEnv(env_config)
 
+    wins = 0
+    draws = 0
     for _ in range(args.eval_num):
         episode_reward = 0
         done = {"__all__": False}
@@ -119,7 +144,7 @@ if __name__ == "__main__":
         steps = 0
         while not done["__all__"]:
             if env.current_player == 0:
-                action = agent.compute_action(obs[agent_id])
+                action = agent.compute_action(obs[agent_id], policy_id="policy_1")
                 obs, reward, done, info = env.step({agent_id: action})
             else:
                 state = env.game.get_state(1)
@@ -132,9 +157,14 @@ if __name__ == "__main__":
                 action = rule_agent.step(extracted_state)
                 obs, reward, done, info = env.step({rules_id: action}, raw_action=True)
 
-            episode_reward += reward[agent_id]
+            # episode_reward += reward[agent_id]
             steps += 1
-            
+
         print(episode_reward, steps, reward)
 
-    ray.shutdown()
+        if reward[agent_id] == 0:
+            draws += 1
+        elif reward[agent_id] == 1:
+            wins += 1
+
+    print("Wins: {}, Draws: {}, Episodes: {}".format(wins, draws, args.eval_num))

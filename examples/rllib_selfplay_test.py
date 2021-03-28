@@ -125,6 +125,8 @@ def copy_weights(to_policy, from_policy, trainer):
     ):
         assert (v == v2).all()
 
+    print("{} == {}".format(to_policy, from_policy))
+
 
 def shift_policies(trainer, new, p2, p3, p4):
     copy_weights(p4, p3, trainer)
@@ -132,20 +134,88 @@ def shift_policies(trainer, new, p2, p3, p4):
     copy_weights(p2, new, trainer)
 
 
-def train_function(config, reporter):
-    trainer = PPOTrainer(env="yaniv", config=config)
-    i = 0
-    while True:
-        result = trainer.train()
-        reporter(**result)
-        print(pretty_print(result))
+def make_eval_func(env_config, eval_num):
+    def yaniv_eval(trainer, eval_workers):
+        print("\n\n\n************** EVALUATION **************")
+        
+        agent = trainer
+        rule_agent = YanivNoviceRuleAgent(single_step=True)
+        agent_id = "player_0"
+        rules_id = "player_1"
 
-        # if policy 1 wins more than 50% of the time against old policies
-        if result["custom_metrics"]["win_mean"] > 0.5:
-            print("shift")
-            shift_policies(trainer, "policy_1", "policy_2", "policy_3", "policy_4")
+        env = YanivEnv(env_config)
 
-        i += 1
+        wins = 0
+        draws = 0
+        total_steps = 0
+        for _ in range(eval_num):
+            episode_reward = 0
+            done = {"__all__": False}
+            obs = env.reset()
+
+            steps = 0
+            while not done["__all__"]:
+                if env.current_player == 0:
+                    action = agent.compute_action(obs[agent_id], policy_id="policy_1")
+                    obs, reward, done, info = env.step({agent_id: action})
+                else:
+                    state = env.game.get_state(1)
+                    extracted_state = {}
+                    extracted_state["raw_obs"] = state
+                    extracted_state["raw_legal_actions"] = [
+                        a for a in state["legal_actions"]
+                    ]
+
+                    action = rule_agent.step(extracted_state)
+                    obs, reward, done, info = env.step(
+                        {rules_id: action}, raw_action=True
+                    )
+
+                steps += 1
+
+            # print(episode_reward, steps, reward)
+
+            # metrics
+            if reward[agent_id] == 0:
+                draws += 1
+            elif reward[agent_id] == 1:
+                wins += 1
+            total_steps += steps
+
+        eval_vs = "eval_rules_"
+        metrics = {
+            eval_vs + "draw_rate": draws / eval_num,
+            eval_vs + "avg_roundlen": total_steps / eval_num,
+            eval_vs + "win_rate": wins / eval_num,
+        }
+
+        print(pretty_print(metrics), "\n\n\n")
+
+        return metrics
+
+    return yaniv_eval
+
+
+class YanivTrainer(tune.Trainable):
+    def setup(self, config):
+        self.trainer = PPOTrainer(env="yaniv", config=config)
+        self.config = config
+
+    def step(self):
+        result = self.trainer.train()
+
+        if result["custom_metrics"]["win_mean"] > 0.55:
+            shift_policies(self.trainer, "policy_1", "policy_2", "policy_3", "policy_4")
+            print("weights shifted")
+
+        return result
+
+    def save_checkpoint(self, dir):
+        self.trainer.save(dir)
+        return dir
+
+    def load_checkpoint(self, checkpoint):
+        self.trainer.load_checkpoint(checkpoint)
 
 
 def cuda_avail():
@@ -171,6 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=3)
     parser.add_argument("--eval-num", type=int, default=1)
     parser.add_argument("--random-players", type=int, default=0)
+    parser.add_argument("--restore", type=str, default="")
     args = parser.parse_args()
 
     print("cuda: ")
@@ -186,7 +257,11 @@ if __name__ == "__main__":
     config = {
         "env": "yaniv",
         "env_config": env_config,
-        "model": {"custom_model": "yaniv_mask", "fcnet_hiddens": [512, 512]},
+        "model": {
+            "custom_model": "yaniv_mask",
+            "fcnet_hiddens": [512, 512],
+            # "vf_share_layers": True,
+        },
         "framework": "torch",
         "num_gpus": 1,
         "num_workers": args.num_workers,
@@ -203,17 +278,20 @@ if __name__ == "__main__":
         "callbacks": YanivCallbacks,
         "batch_mode": "complete_episodes",
         "log_level": "INFO",
-        "vf_share_layers": True,
-        "vf_loss_coeff": 1.0,
-        "lr": tune.grid_search([0.0005, 1e-5]),
+        "evaluation_num_workers": 0,
+        "evaluation_config": {"explore": False},
+        "evaluation_interval": 5,
+        "custom_eval_function": make_eval_func(env_config, 500)
+        # "lr": tune.grid_search([0.0005, 1e-5]),
     }
 
     resources = PPOTrainer.default_resource_request(config).to_json()
     tune.run(
-        train_function,
+        YanivTrainer,
         resources_per_trial=resources,
         config=config,
         stop={"training_iteration": 1000},
+        checkpoint_freq=20,
         checkpoint_at_end=True,
         verbose=Verbosity.V3_TRIAL_DETAILS,
         callbacks=[
@@ -223,4 +301,5 @@ if __name__ == "__main__":
                 log_config=True,
             )
         ],
+        restore=args.restore
     )
