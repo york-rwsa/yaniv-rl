@@ -96,38 +96,32 @@ def policy_mapping_fn(agent_id):
         return "policy_1"  # Choose 1 policy for agent_0
     else:
         # trains against past versions of self
-        # return np.random.choice(
-        #     ["policy_1", "policy_2", "policy_3", "policy_4"],
-        #     1,
-        #     p=[0.5, 0.5 / 3, 0.5 / 3, 0.5 / 3],
-        # )[0]
         return np.random.choice(
-            ["policy_2", "policy_3", "policy_4"],
-            p=[0.5, 0.5 / 2, 0.5 / 2],
+            ["policy_1", "policy_2", "policy_3", "policy_4"],
+            p=[0.5, 0.5 / 3, 0.5 / 3, 0.5 / 3],
         )
 
 
-def copy_weights(p1, p2, trainer):
-    """copy weights from p2 to p1 without changing p42"""
-    P0key_P1val = {}  # temp storage with p1 keys & p2 values
+def copy_weights(to_policy, from_policy, trainer):
+    """copy weights from from_policy to to_policy without changing from_policy"""
+    temp_weights = {}  # temp storage with to_policy keys & from_policy values
     for (k, v), (k2, v2) in zip(
-        trainer.get_policy(p1).get_weights().items(),
-        trainer.get_policy(p2).get_weights().items(),
+        trainer.get_policy(to_policy).get_weights().items(),
+        trainer.get_policy(from_policy).get_weights().items(),
     ):
-        P0key_P1val[k] = v2
+        temp_weights[k] = v2
 
     # set weights
     trainer.set_weights(
         {
-            p1: P0key_P1val,  # weights or values from p2 with p1 keys
-            p2: trainer.get_policy(p2).get_weights(),  # no change
+            to_policy: temp_weights,  # weights or values from from_policy with to_policy keys
         }
     )
 
     # To check
     for (k, v), (k2, v2) in zip(
-        trainer.get_policy(p1).get_weights().items(),
-        trainer.get_policy(p2).get_weights().items(),
+        trainer.get_policy(to_policy).get_weights().items(),
+        trainer.get_policy(from_policy).get_weights().items(),
     ):
         assert (v == v2).all()
 
@@ -140,7 +134,6 @@ def shift_policies(trainer, new, p2, p3, p4):
 
 def train_function(config, reporter):
     trainer = PPOTrainer(env="yaniv", config=config)
-
     i = 0
     while True:
         result = trainer.train()
@@ -193,10 +186,7 @@ if __name__ == "__main__":
     config = {
         "env": "yaniv",
         "env_config": env_config,
-        "model": {
-            "custom_model": "yaniv_mask",
-            "fcnet_hiddens": [512, 512]
-        },
+        "model": {"custom_model": "yaniv_mask", "fcnet_hiddens": [512, 512]},
         "framework": "torch",
         "num_gpus": 1,
         "num_workers": args.num_workers,
@@ -213,6 +203,9 @@ if __name__ == "__main__":
         "callbacks": YanivCallbacks,
         "batch_mode": "complete_episodes",
         "log_level": "INFO",
+        "vf_share_layers": True,
+        "vf_loss_coeff": 1.0,
+        "lr": tune.grid_search([0.0005, 1e-5]),
     }
 
     resources = PPOTrainer.default_resource_request(config).to_json()

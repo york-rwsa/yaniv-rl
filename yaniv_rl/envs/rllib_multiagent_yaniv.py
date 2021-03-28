@@ -42,49 +42,67 @@ class YanivEnv(MultiAgentEnv):
         self.timestep = 0
         self.current_player = None
 
+    @property
+    def current_player_string(self):
+        return self._get_player_string(self.current_player)
+
     def reset(self):
         _, player_id = self.game.init_game()
         self.current_player = player_id
         self.timestep = 0
 
-        return self._get_observations()
+        return {
+            self.current_player_string: self._get_players_observation(
+                self.current_player
+            )
+        }
 
     def step(self, action_dict, raw_action=False):
-        action = action_dict[self._get_player_string(self.current_player)]
+        action = action_dict[self.current_player_string]
         if not raw_action:
             action = self._decode_action(action)
 
         self.game.step(action)
+        self.current_player = self.game.round.current_player
 
         done = self.game.is_over()
         dones = {p: done for p in self._get_players()}
         dones["__all__"] = done
+
         if done:
             payoffs = self.game.get_payoffs()
             rewards = {
                 self._get_player_string(i): payoffs[i] for i in range(self.num_players)
             }
-        else:
-            rewards = {
-                p: (-0.01 if i == self.current_player else 0)
-                for i, p in enumerate(self._get_players())
+            observations = {
+                p: {
+                    "state": np.zeros(self.observation_space.spaces['state'].shape),
+                    "action_mask": np.zeros(self.action_space.n),
+                }
+                for p in self._get_players()
             }
-            if len(action) == 2:
+        else:
+            if len(action) == 2 and len(action[0]) > 2:
                 # reward discarding multiple cards
-                rewards[self._get_player_string(self.current_player)] = (
-                    0.01 * len(action[0]) / 2
+                reward = 0.01 * len(action[0]) / 2
+            else:
+                reward = -0.1
+
+            rewards = {self.current_player_string: 0}
+            observations = {
+                self.current_player_string: self._get_players_observation(
+                    self.current_player
                 )
+            }
 
         infos = {p: {} for p in self._get_players()}
 
         self.timestep += 1
-        self.current_player = self.game.round.current_player
-
         return (
-            self._get_observations(),
+            observations,
             rewards,
             dones,
-            infos,
+            {},
         )
 
     def _decode_action(self, action_id):
@@ -96,13 +114,20 @@ class YanivEnv(MultiAgentEnv):
     def _get_observations(self):
         observations = {}
         for i in range(self.num_players):
-            obs = {
-                "state": self._extract_state(i),
-                "action_mask": self._get_action_mask(i),
-            }
+            # apppaarently rllib doens't do action for if no obs ret
+            if i != self.current_player:
+                continue
+
+            obs = self._get_players_observation(i)
             observations[self._get_player_string(i)] = obs
 
         return observations
+
+    def _get_players_observation(self, id):
+        return {
+            "state": self._extract_state(id),
+            "action_mask": self._get_action_mask(id),
+        }
 
     def _get_action_mask(self, player_id):
         if player_id != self.current_player:
