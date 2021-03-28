@@ -137,9 +137,11 @@ def shift_policies(trainer, new, p2, p3, p4):
 def make_eval_func(env_config, eval_num):
     def yaniv_eval(trainer, eval_workers):
         print("\n\n\n************** EVALUATION **************")
-        
+
         agent = trainer
-        rule_agent = YanivNoviceRuleAgent(single_step=True)
+        rule_agent = YanivNoviceRuleAgent(
+            single_step=env_config.get("single_step", True)
+        )
         agent_id = "player_0"
         rules_id = "player_1"
 
@@ -147,6 +149,7 @@ def make_eval_func(env_config, eval_num):
 
         wins = 0
         draws = 0
+        assafs = 0
         total_steps = 0
         for _ in range(eval_num):
             episode_reward = 0
@@ -182,11 +185,16 @@ def make_eval_func(env_config, eval_num):
                 wins += 1
             total_steps += steps
 
+            # assaf contains the player id that assafed, or None
+            if env.game.round.assaf == 0:
+                assafs += 1
+
         eval_vs = "eval_rules_"
         metrics = {
             eval_vs + "draw_rate": draws / eval_num,
             eval_vs + "avg_roundlen": total_steps / eval_num,
             eval_vs + "win_rate": wins / eval_num,
+            eval_vs + "assaf_rate": assafs / eval_num,
         }
 
         print(pretty_print(metrics), "\n\n\n")
@@ -207,6 +215,11 @@ class YanivTrainer(tune.Trainable):
         if result["custom_metrics"]["win_mean"] > 0.55:
             shift_policies(self.trainer, "policy_1", "policy_2", "policy_3", "policy_4")
             print("weights shifted")
+            weights = ray.put(self.trainer.workers.local_worker().save())
+            self.trainer.workers.foreach_worker(
+                lambda w: w.restore(ray.get(weights))
+            )
+            print("weights synced")
 
         return result
 
@@ -231,6 +244,8 @@ env_config = {
     "use_scaled_negative_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
+    "single_step": True,
+    "step_reward": 0,
 }
 
 
@@ -288,6 +303,7 @@ if __name__ == "__main__":
     resources = PPOTrainer.default_resource_request(config).to_json()
     tune.run(
         YanivTrainer,
+        name="multistep_actions",
         resources_per_trial=resources,
         config=config,
         stop={"training_iteration": 1000},
@@ -301,5 +317,5 @@ if __name__ == "__main__":
                 log_config=True,
             )
         ],
-        restore=args.restore
+        restore=args.restore,
     )
