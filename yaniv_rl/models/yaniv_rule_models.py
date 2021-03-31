@@ -84,7 +84,7 @@ class YanivNoviceRuleAgent(object):
 
             actions.extend(
                 cls.best_discards(
-                    [a for a in state["legal_actions"] if a != utils.YANIV_ACTION]
+                    [a for a in legal_actions if a != utils.YANIV_ACTION]
                 )
             )
 

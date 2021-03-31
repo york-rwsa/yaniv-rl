@@ -33,7 +33,7 @@ class YanivActionMaskModel(TorchModelV2, nn.Module):
             self, obs_space, action_space, num_outputs, model_config, name
         )
         nn.Module.__init__(self)
-        true_obs_space = Box(low=0, high=1, shape=(266,), dtype=int)
+        true_obs_space = Box(low=0, high=1, shape=obs_space.original_space['state'].shape, dtype=int)
         self.action_model = TorchFC(
             true_obs_space, action_space, num_outputs, model_config, name
         )
@@ -70,6 +70,8 @@ class YanivCallbacks(DefaultCallbacks):
         episode.custom_metrics["final_reward"] = final_rewards["player_0"]
         episode.custom_metrics["win"] = 1 if final_rewards["player_0"] == 1 else 0
         episode.custom_metrics["draw"] = 1 if final_rewards["player_0"] == 0 else 0
+        if final_rewards["player_0"] < 0:
+            episode.custom_metrics["negative_reward"] = final_rewards["player_0"]
 
     def on_sample_end(self, worker, samples, **kwargs):
         pass
@@ -151,8 +153,8 @@ def make_eval_func(env_config, eval_num):
         draws = 0
         assafs = 0
         total_steps = 0
+        scores = [[], []]
         for _ in range(eval_num):
-            episode_reward = 0
             done = {"__all__": False}
             obs = env.reset()
 
@@ -188,6 +190,14 @@ def make_eval_func(env_config, eval_num):
             # assaf contains the player id that assafed, or None
             if env.game.round.assaf == 0:
                 assafs += 1
+            
+            s = env.game.round.scores
+            if s is not None:
+                if s[0] > 0:
+                    scores[0].append(env.game.round.scores[0])
+                if s[1] > 0:
+                    scores[1].append(env.game.round.scores[1])
+
 
         eval_vs = "eval_rules_"
         metrics = {
@@ -195,6 +205,8 @@ def make_eval_func(env_config, eval_num):
             eval_vs + "avg_roundlen": total_steps / eval_num,
             eval_vs + "win_rate": wins / eval_num,
             eval_vs + "assaf_rate": assafs / eval_num,
+            eval_vs + "self_avg_losing_score": np.mean(scores[0]) if len(scores[0]) > 0 else 0,
+            eval_vs + "oppt_avg_losing_score": np.mean(scores[1]) if len(scores[1]) > 0 else 0
         }
 
         print(pretty_print(metrics), "\n\n\n")
@@ -216,9 +228,7 @@ class YanivTrainer(tune.Trainable):
             shift_policies(self.trainer, "policy_1", "policy_2", "policy_3", "policy_4")
             print("weights shifted")
             weights = ray.put(self.trainer.workers.local_worker().save())
-            self.trainer.workers.foreach_worker(
-                lambda w: w.restore(ray.get(weights))
-            )
+            self.trainer.workers.foreach_worker(lambda w: w.restore(ray.get(weights)))
             print("weights synced")
 
         return result
@@ -241,11 +251,12 @@ env_config = {
     "end_after_n_deck_replacements": 0,
     "end_after_n_steps": 130,
     "early_end_reward": 0,
-    "use_scaled_negative_reward": False,
+    "use_scaled_negative_reward": True,
     "max_negative_reward": -1,
-    "negative_score_cutoff": 50,
-    "single_step": True,
+    "negative_score_cutoff": 20,
+    "single_step": False,
     "step_reward": 0,
+    "use_unkown_cards_in_state": False
 }
 
 
@@ -253,10 +264,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-iters", type=int, default=10)
     parser.add_argument("--train", type=bool, default=True)
-    parser.add_argument("--num-workers", type=int, default=3)
+    parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--eval-num", type=int, default=1)
     parser.add_argument("--random-players", type=int, default=0)
     parser.add_argument("--restore", type=str, default="")
+    parser.add_argument("--wandb-id", type=str, default=None)
+    parser.add_argument("--name", type=str, default="")
+    
     args = parser.parse_args()
 
     print("cuda: ")
@@ -291,7 +305,7 @@ if __name__ == "__main__":
             "policies_to_train": ["policy_1"],
         },
         "callbacks": YanivCallbacks,
-        "batch_mode": "complete_episodes",
+       # "batch_mode": "complete_episodes",
         "log_level": "INFO",
         "evaluation_num_workers": 0,
         "evaluation_config": {"explore": False},
@@ -300,13 +314,11 @@ if __name__ == "__main__":
         # "lr": tune.grid_search([0.0005, 1e-5]),
     }
 
-    resources = PPOTrainer.default_resource_request(config).to_json()
     tune.run(
         YanivTrainer,
-        name="multistep_actions",
-        resources_per_trial=resources,
+        name=args.name,
         config=config,
-        stop={"training_iteration": 1000},
+        stop={"training_iteration": 10000},
         checkpoint_freq=20,
         checkpoint_at_end=True,
         verbose=Verbosity.V3_TRIAL_DETAILS,
@@ -315,6 +327,8 @@ if __name__ == "__main__":
                 project="rllib_yaniv",
                 # api_key_file="/home/jippo/.netrc",
                 log_config=True,
+                id=args.wandb_id,
+                resume="must" if args.wandb_id is not None else "allow"
             )
         ],
         restore=args.restore,

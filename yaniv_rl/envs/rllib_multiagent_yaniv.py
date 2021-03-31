@@ -15,26 +15,32 @@ DEFAULT_GAME_CONFIG = {
     "use_scaled_negative_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
+    "single_step": True,
+    "step_reward": 0,
+    "use_unkown_cards_in_state": True
 }
 
 
 class YanivEnv(MultiAgentEnv):
-    def __init__(self, config={}, single_step=True):
+    def __init__(self, config={}):
         super(YanivEnv).__init__()
-        self.single_step = single_step
+        self.single_step = config.get("single_step", True)
         self.num_players = 2
 
-        self.game = Game(single_step_actions=single_step, num_players=self.num_players)
+        self.game = Game(single_step_actions=self.single_step, num_players=self.num_players)
+
+        self.step_reward = config.get("step_reward", 0)
 
         conf = DEFAULT_GAME_CONFIG.copy()
         conf.update(config)
         self.game.configure(conf)
+        self.config = conf
 
         self.action_space = Discrete(self.game.get_action_num())
         self.observation_space = Dict(
             {
                 "action_mask": Box(0, 1, shape=(self.action_space.n,)),
-                "state": Box(shape=(266,), low=0, high=1, dtype=int),
+                "state": Box(shape=(self._get_state_shape(),), low=0, high=1, dtype=int),
             }
         )
         self.reward_range = (-1.0, 1.0)
@@ -82,13 +88,13 @@ class YanivEnv(MultiAgentEnv):
                 for p in self._get_players()
             }
         else:
-            if len(action) == 2 and len(action[0]) > 2:
-                # reward discarding multiple cards
-                reward = 0.01 * len(action[0]) / 2
-            else:
-                reward = -0.1
+            # if len(action) == 2 and len(action[0]) > 2:
+            #     # reward discarding multiple cards
+            #     reward = 0.01 * len(action[0]) / 2
+            # else:
+            #     reward = -0.1
 
-            rewards = {self.current_player_string: 0}
+            rewards = {self.current_player_string: self.step_reward}
             observations = {
                 self.current_player_string: self._get_players_observation(
                     self.current_player
@@ -154,23 +160,27 @@ class YanivEnv(MultiAgentEnv):
         else:
             last_discard = discard_pile[-2]
 
+        
         available_discard = set([last_discard[0], last_discard[-1]])
         deadcards = [c for d in discard_pile for c in d if c not in available_discard]
 
         current_player = self.game.players[player_id]
         next_player = self.game.players[self.game.round._get_next_player(player_id)]
         known_cards = self.game.round.known_cards[player_id]
-        unknown_cards = self.game.round.dealer.deck + [
-            c for c in next_player.hand if c not in known_cards
-        ]
 
         card_obs = [
             current_player.hand,
             available_discard,
             deadcards,
             known_cards,
-            unknown_cards,
         ]
+
+        if self.config['use_unkown_cards_in_state']:
+            unknown_cards = self.game.round.dealer.deck + [
+                c for c in next_player.hand if c not in known_cards
+            ]
+            card_obs.append(unknown_cards)
+
         card_obs = np.ravel(list(map(utils.encode_cards, card_obs)))
 
         opponent_hand_size = np.zeros(6)
@@ -185,3 +195,10 @@ class YanivEnv(MultiAgentEnv):
 
     def _get_players(self):
         return [self._get_player_string(i) for i in range(self.num_players)]
+
+    def _get_state_shape(self):
+        base_shape = 214
+        if self.config['use_unkown_cards_in_state']:
+            base_shape += 52
+        
+        return base_shape
