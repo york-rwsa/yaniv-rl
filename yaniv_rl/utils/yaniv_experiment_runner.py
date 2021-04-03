@@ -5,9 +5,6 @@ from yaniv_rl.utils import tournament
 import sys
 import os
 from rlcard.utils.logger import Logger
-from rlcard.agents.random_agent import RandomAgent
-import rlcard
-from yaniv_rl.models.yaniv_rule_models import YanivNoviceRuleAgent
 from tqdm import trange
 import wandb
 

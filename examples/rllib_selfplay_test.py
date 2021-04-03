@@ -1,5 +1,6 @@
 from ray.rllib.agents.ppo.ppo import PPOTrainer
 from ray.tune.logger import pretty_print
+from ray.tune.trial import ExportFormat
 from ray.tune.utils.log import Verbosity
 from yaniv_rl.utils.utils import ACTION_SPACE
 import ray
@@ -23,6 +24,9 @@ from yaniv_rl.envs.rllib_multiagent_yaniv import YanivEnv
 from yaniv_rl.models.yaniv_rule_models import YanivNoviceRuleAgent
 
 from ray.tune.integration.wandb import WandbLoggerCallback
+
+import random
+import ray
 
 torch, nn = try_import_torch()
 
@@ -234,8 +238,7 @@ class YanivTrainer(tune.Trainable):
         return result
 
     def save_checkpoint(self, dir):
-        self.trainer.save(dir)
-        return dir
+        return self.trainer.save_checkpoint(dir)
 
     def load_checkpoint(self, checkpoint):
         self.trainer.load_checkpoint(checkpoint)
@@ -275,7 +278,8 @@ if __name__ == "__main__":
 
     print("cuda: ")
     cuda_avail()
-    ray.init(local_mode=True)
+    ray.init(local_mode=False,)
+
 
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
@@ -283,6 +287,34 @@ if __name__ == "__main__":
     env = YanivEnv(env_config)
     obs_space = env.observation_space
     act_space = env.action_space
+
+    def explore(config):
+        # ensure we collect enough timesteps to do sgd
+        if config["train_batch_size"] < config["sgd_minibatch_size"] * 2:
+            config["train_batch_size"] = config["sgd_minibatch_size"] * 2
+        # ensure we run at least one sgd iter
+        if config["num_sgd_iter"] < 1:
+            config["num_sgd_iter"] = 1
+        return config
+
+    from ray.tune.schedulers import PopulationBasedTraining
+    pbt = PopulationBasedTraining(
+        time_attr="training_iteration",
+        metric="evaluation/eval_rules_win_rate",
+        mode="max",
+        perturbation_interval=10,
+        resample_probability=0.25,
+        # Specifies the mutations of these hyperparams
+        hyperparam_mutations={
+            "lambda": lambda: random.uniform(0.9, 1.0),
+            "clip_param": lambda: random.uniform(0.01, 0.5),
+            "lr": [1e-3, 5e-4, 1e-4, 5e-5, 1e-5],
+            "num_sgd_iter": lambda: random.randint(1, 30),
+            "sgd_minibatch_size": lambda: random.randint(128, 16384),
+            "train_batch_size": lambda: random.randint(2000, 160000),
+        },
+        custom_explore_fn=explore)
+    
     config = {
         "env": "yaniv",
         "env_config": env_config,
@@ -292,8 +324,9 @@ if __name__ == "__main__":
             # "vf_share_layers": True,
         },
         "framework": "torch",
-        "num_gpus": 1,
+        "num_gpus": 0.5,
         "num_workers": args.num_workers,
+        "num_envs_per_worker": 2,
         "multiagent": {
             "policies": {
                 "policy_1": (None, obs_space, act_space, {}),
@@ -305,31 +338,55 @@ if __name__ == "__main__":
             "policies_to_train": ["policy_1"],
         },
         "callbacks": YanivCallbacks,
-       # "batch_mode": "complete_episodes",
         "log_level": "INFO",
         "evaluation_num_workers": 0,
         "evaluation_config": {"explore": False},
-        "evaluation_interval": 5,
-        "custom_eval_function": make_eval_func(env_config, 500)
-        # "lr": tune.grid_search([0.0005, 1e-5]),
+        "evaluation_interval": 1,
+        "custom_eval_function": make_eval_func(env_config, 100),
+
+        # hyper params
+        "batch_mode": "complete_episodes",
+        
+        # These params are tuned from a fixed starting value.
+        "lambda": 0.95,
+        "clip_param": 0.2,
+        "lr": 1e-4,
+        # These params start off randomly drawn from a set.
+        "num_sgd_iter": tune.choice([10, 20, 30]),
+        "sgd_minibatch_size": tune.choice([128, 512, 2048]),
+        "train_batch_size": tune.choice([10000, 20000, 40000])
     }
 
-    tune.run(
+
+    # from ray.tune.utils import validate_save_restore
+    # print("check save restore")
+    # print(validate_save_restore(YanivTrainer, config=config, num_gpus=0.5))
+    # print("checked save restores")
+
+    resources = PPOTrainer.default_resource_request(config)
+
+    results = tune.run(
         YanivTrainer,
+        resources_per_trial=resources,
+        scheduler=pbt,
         name=args.name,
+        num_samples=2,
         config=config,
-        stop={"training_iteration": 10000},
-        checkpoint_freq=20,
+        stop={"training_iteration": 1000},
+        checkpoint_freq=5,
         checkpoint_at_end=True,
         verbose=Verbosity.V3_TRIAL_DETAILS,
-        callbacks=[
-            WandbLoggerCallback(
-                project="rllib_yaniv",
-                # api_key_file="/home/jippo/.netrc",
-                log_config=True,
-                id=args.wandb_id,
-                resume="must" if args.wandb_id is not None else "allow"
-            )
-        ],
+        # callbacks=[
+        #     WandbLoggerCallback(
+        #         project="ppotune",
+        #         # api_key_file="/home/jippo/.netrc",
+        #         log_config=True,
+        #         id=args.wandb_id,
+        #         resume="must" if args.wandb_id is not None else "allow"
+        #     )
+        # ],
+        export_formats=[ExportFormat.MODEL],
         restore=args.restore,
+        keep_checkpoints_num=5,
+        max_failures=5,
     )
