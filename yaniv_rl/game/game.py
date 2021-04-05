@@ -20,6 +20,7 @@ class YanivGame(object):
         self._end_after_n_steps = 0
         self._early_end_reward = 0
         self._use_scaled_negative_reward = False
+        self._use_scaled_positive_reward = False
         self._max_negative_reward = -1
         self._negative_score_cutoff = 50
 
@@ -70,6 +71,7 @@ class YanivGame(object):
         self._end_after_n_steps = config["end_after_n_steps"]
         self._early_end_reward = config["early_end_reward"]
         self._use_scaled_negative_reward = config["use_scaled_negative_reward"]
+        self._use_scaled_positive_reward = config["use_scaled_positive_reward"]
         self._max_negative_reward = config["max_negative_reward"]
         self._negative_score_cutoff = config["negative_score_cutoff"]
 
@@ -179,6 +181,10 @@ class YanivGame(object):
                     payoff = self._max_negative_reward
 
                 self.payoffs.append(payoff)
+
+        if self._use_scaled_positive_reward and 1 in self.payoffs:
+            winner = self.payoffs.index(1)
+            self.payoffs[winner] = abs(min(self.payoffs))
 
         return self.payoffs
 
