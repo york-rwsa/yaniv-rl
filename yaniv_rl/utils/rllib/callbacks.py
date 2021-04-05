@@ -17,7 +17,7 @@ class YanivCallbacks(DefaultCallbacks):
         final_rewards = {k: r[-1] for k, r in episode._agent_reward_history.items()}
 
         episode.custom_metrics["final_reward"] = final_rewards["player_0"]
-        episode.custom_metrics["win"] = 1 if final_rewards["player_0"] == 1 else 0
+        episode.custom_metrics["win"] = 1 if final_rewards["player_0"] > 0 else 0
         episode.custom_metrics["draw"] = 1 if final_rewards["player_0"] == 0 else 0
         if final_rewards["player_0"] < 0:
             episode.custom_metrics["negative_reward"] = final_rewards["player_0"]
@@ -40,4 +40,3 @@ class YanivCallbacks(DefaultCallbacks):
         **kwargs
     ):
         pass
-

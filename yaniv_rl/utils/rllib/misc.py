@@ -83,14 +83,14 @@ def make_eval_func(env_config, eval_num):
             # metrics
             if reward[agent_id] == 0:
                 draws += 1
-            elif reward[agent_id] == 1:
+            elif reward[agent_id] > 0:
                 wins += 1
             total_steps += steps
 
             # assaf contains the player id that assafed, or None
             if env.game.round.assaf == 0:
                 assafs += 1
-            
+
             s = env.game.round.scores
             if s is not None:
                 if s[0] > 0:
@@ -98,15 +98,18 @@ def make_eval_func(env_config, eval_num):
                 if s[1] > 0:
                     scores[1].append(env.game.round.scores[1])
 
-
         eval_vs = "eval_rules_"
         metrics = {
             eval_vs + "draw_rate": draws / eval_num,
             eval_vs + "avg_roundlen": total_steps / eval_num,
             eval_vs + "win_rate": wins / eval_num,
             eval_vs + "assaf_rate": assafs / eval_num,
-            eval_vs + "self_avg_losing_score": np.mean(scores[0]) if len(scores[0]) > 0 else 0,
-            eval_vs + "oppt_avg_losing_score": np.mean(scores[1]) if len(scores[1]) > 0 else 0
+            eval_vs + "self_avg_losing_score": np.mean(scores[0])
+            if len(scores[0]) > 0
+            else 0,
+            eval_vs + "oppt_avg_losing_score": np.mean(scores[1])
+            if len(scores[1]) > 0
+            else 0,
         }
 
         print(pretty_print(metrics), "\n\n\n")

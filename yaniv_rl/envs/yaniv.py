@@ -8,7 +8,7 @@ DEFAULT_GAME_CONFIG = {
     "end_after_n_deck_replacements": 0,
     "end_after_n_steps": 100,
     "early_end_reward": -1,
-    "use_scaled_negative_reward": True,
+    "use_scaled_negative_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
 }
