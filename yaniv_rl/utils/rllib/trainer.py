@@ -14,7 +14,7 @@ class YanivTrainer(tune.Trainable):
     def step(self):
         result = self.trainer.train()
 
-        if result["custom_metrics"]["win_mean"] > 0.55:
+        if result["custom_metrics"]["win_mean"] > 0.52:
             shift_policies(self.trainer, "policy_1", "policy_2", "policy_3", "policy_4")
             print("weights shifted")
             weights = ray.put(self.trainer.workers.local_worker().save())

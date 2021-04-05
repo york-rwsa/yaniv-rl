@@ -42,12 +42,13 @@ env_config = {
     "end_after_n_steps": 130,
     "early_end_reward": 0,
     "use_scaled_negative_reward": True,
-    "use_scaled_positive_reward": False,
+    "use_scaled_positive_reward": True,
     "max_negative_reward": -1,
-    "negative_score_cutoff": 20,
+    "negative_score_cutoff": 30,
     "single_step": False,
     "step_reward": 0,
     "use_unkown_cards_in_state": False,
+    "use_dead_cards_in_state": False,
     "observation_scheme": 1,
 }
 

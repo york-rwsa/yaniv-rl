@@ -20,6 +20,7 @@ DEFAULT_GAME_CONFIG = {
     "single_step": True,
     "step_reward": 0,
     "use_unkown_cards_in_state": True,
+    "use_dead_cards_in_state": True,
     "observation_scheme": 0,
 }
 
@@ -245,7 +246,7 @@ class YanivEnv(MultiAgentEnv):
             opponent_hand_size,
             utils.one_hot_encode_card(top_card),
             utils.one_hot_encode_card(bottom_card),
-            utils.encode_cards(deadcards),
+            utils.encode_cards(deadcards) if self.config["use_dead_cards_in_state"] else [],
         ]
 
         obs = np.concatenate(obs)
@@ -266,6 +267,10 @@ class YanivEnv(MultiAgentEnv):
 
             return shape
         elif self.obs_scheme == 1:
-            return 262
+            shape = 210
+            if self.config["use_dead_cards_in_state"]:
+                shape += 52
+            
+            return shape 
         else:
             raise Exception("obs scheme not")
