@@ -1,0 +1,36 @@
+Round state
+[
+	Deck : 54 card deck
+	Discard pile : 2d list with discards ie: [[H3], [D3, D4, D5], [ST, CT]]
+		- discard[0] is the first card put down
+		- can change as users pick up and put down cards
+	Seen cards : list of known cards in players hands
+		- seen_cards[player_id] = [cards picked up from discard pile by player_id]
+	
+	current_player
+	player_discarded = true/false - since there are two steps
+	player_picked_up = true/false
+	legal_actions: legal actions of the current player
+]
+
+-------
+state should be encoded as a 52 el binary array
+
+ie the hand can be encoded such:
+hand = [0]*52
+# turn on card CT will be rankid + suitid= 9+0
+hand[9] = 1
+
+
+-------
+
+so we need
+
+deadcards        -< all cards that cannot be picked up
+top discard      -< always populated
+bottom discard   -< zeros if only 1 card played
+hand 
+known cards 52*n -<
+hand sizes 
+unknown cards
+
