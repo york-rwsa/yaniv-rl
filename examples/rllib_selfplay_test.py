@@ -12,7 +12,13 @@ import argparse
 import numpy as np
 
 from yaniv_rl.envs.rllib_multiagent_yaniv import YanivEnv
-from yaniv_rl.utils.rllib import YanivActionMaskModel, YanivCallbacks, make_eval_func, YanivTrainer
+from yaniv_rl.utils.rllib import (
+    YanivActionMaskModel,
+    YanivCallbacks,
+    make_eval_func,
+    YanivTrainer,
+)
+
 
 def policy_mapping_fn(agent_id):
     if agent_id.endswith("0"):
@@ -36,12 +42,13 @@ env_config = {
     "end_after_n_steps": 130,
     "early_end_reward": 0,
     "use_scaled_negative_reward": True,
-    "use_scaled_positive_reward": True,
+    "use_scaled_positive_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 20,
     "single_step": False,
     "step_reward": 0,
     "use_unkown_cards_in_state": False,
+    "observation_scheme": 1,
 }
 
 
@@ -62,6 +69,7 @@ if __name__ == "__main__":
 
     print("cuda: ")
     cuda_avail()
+
     ray.init(
         local_mode=False,
     )
@@ -73,41 +81,9 @@ if __name__ == "__main__":
     obs_space = env.observation_space
     act_space = env.action_space
 
-    # def explore(config):
-    #     # ensure we collect enough timesteps to do sgd
-    #     if config["train_batch_size"] < config["sgd_minibatch_size"] * 2:
-    #         config["train_batch_size"] = config["sgd_minibatch_size"] * 2
-    #     # ensure we run at least one sgd iter
-    #     if config["num_sgd_iter"] < 1:
-    #         config["num_sgd_iter"] = 1
-    #     return config
-
-    # from ray.tune.schedulers import PopulationBasedTraining
-    # pbt = PopulationBasedTraining(
-    #     time_attr="training_iteration",
-    #     metric="evaluation/eval_rules_win_rate",
-    #     mode="max",
-    #     perturbation_interval=10,
-    #     resample_probability=0.25,
-    #     # Specifies the mutations of these hyperparams
-    #     hyperparam_mutations={
-    #         "lambda": lambda: random.uniform(0.9, 1.0),
-    #         "clip_param": lambda: random.uniform(0.01, 0.5),
-    #         "lr": [1e-3, 5e-4, 1e-4, 5e-5, 1e-5],
-    #         "num_sgd_iter": lambda: random.randint(1, 30),
-    #         "sgd_minibatch_size": lambda: random.randint(128, 16384),
-    #         "train_batch_size": lambda: random.randint(2000, 160000),
-    #     },
-    #     custom_explore_fn=explore)
-
     config = {
         "env": "yaniv",
         "env_config": env_config,
-        "model": {
-            "custom_model": "yaniv_mask",
-            "fcnet_hiddens": [512, 512],
-            # "vf_share_layers": True,
-        },
         "framework": "torch",
         "num_gpus": args.num_gpus,
         "num_workers": args.num_workers,
@@ -131,33 +107,21 @@ if __name__ == "__main__":
         "evaluation_interval": args.eval_int,
         "custom_eval_function": make_eval_func(env_config, args.eval_num),
         # hyper params
+        "model": {
+            "custom_model": "yaniv_mask",
+            "fcnet_hiddens": [512, 512],
+        },
         "batch_mode": "complete_episodes",
         "train_batch_size": 32768,
         "num_sgd_iter": 20,
         "sgd_minibatch_size": 2048,
-        # for pbt
-        # # These params are tuned from a fixed starting value.
-        # "lambda": 0.95,
-        # "clip_param": 0.2,
-        # "lr": 1e-4,
-        # # These params start off randomly drawn from a set.
-        # "num_sgd_iter": tune.choice([10, 20, 30]),
-        # "sgd_minibatch_size": tune.choice([128, 512, 2048]),
-        # "train_batch_size": tune.choice([10000, 20000, 40000])
     }
-
-    # from ray.tune.utils import validate_save_restore
-    # print("check save restore")
-    # print(validate_save_restore(YanivTrainer, config=config, num_gpus=0.5))
-    # print("checked save restores")
 
     resources = PPOTrainer.default_resource_request(config)
 
     results = tune.run(
         YanivTrainer,
         resources_per_trial=resources,
-        # scheduler=pbt,
-        # num_samples=2,
         name=args.name,
         config=config,
         stop={"training_iteration": 1000},
@@ -167,7 +131,6 @@ if __name__ == "__main__":
         callbacks=[
             WandbLoggerCallback(
                 project="rllib_yaniv",
-                # api_key_file="/home/jippo/.netrc",
                 log_config=True,
                 id=args.wandb_id,
                 resume="must" if args.wandb_id is not None else "allow",

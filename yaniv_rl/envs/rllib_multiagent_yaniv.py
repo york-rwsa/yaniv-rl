@@ -1,3 +1,4 @@
+from yaniv_rl.utils.utils import one_hot_encode_cards
 from yaniv_rl import utils
 import numpy as np
 import copy
@@ -13,11 +14,13 @@ DEFAULT_GAME_CONFIG = {
     "end_after_n_steps": 100,
     "early_end_reward": 0,
     "use_scaled_negative_reward": False,
+    "use_scaled_positive_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
     "single_step": True,
     "step_reward": 0,
-    "use_unkown_cards_in_state": True
+    "use_unkown_cards_in_state": True,
+    "observation_scheme": 0,
 }
 
 
@@ -25,9 +28,12 @@ class YanivEnv(MultiAgentEnv):
     def __init__(self, config={}):
         super(YanivEnv).__init__()
         self.single_step = config.get("single_step", True)
+        self.obs_scheme = config.get("observation_scheme", 0)
         self.num_players = 2
 
-        self.game = Game(single_step_actions=self.single_step, num_players=self.num_players)
+        self.game = Game(
+            single_step_actions=self.single_step, num_players=self.num_players
+        )
 
         self.step_reward = config.get("step_reward", 0)
 
@@ -40,7 +46,9 @@ class YanivEnv(MultiAgentEnv):
         self.observation_space = Dict(
             {
                 "action_mask": Box(0, 1, shape=(self.action_space.n,)),
-                "state": Box(shape=(self._get_state_shape(),), low=0, high=1, dtype=int),
+                "state": Box(
+                    shape=(self._get_state_shape(),), low=0, high=1, dtype=int
+                ),
             }
         )
         self.reward_range = (-1.0, 1.0)
@@ -82,7 +90,7 @@ class YanivEnv(MultiAgentEnv):
             }
             observations = {
                 p: {
-                    "state": np.zeros(self.observation_space.spaces['state'].shape),
+                    "state": np.zeros(self.observation_space.spaces["state"].shape),
                     "action_mask": np.zeros(self.action_space.n),
                 }
                 for p in self._get_players()
@@ -130,8 +138,15 @@ class YanivEnv(MultiAgentEnv):
         return observations
 
     def _get_players_observation(self, id):
+        if self.obs_scheme == 0:
+            state = self._extract_state_0(id)
+        elif self.obs_scheme == 1:
+            state = self._extract_state_1(id)
+        else:
+            raise Exception("obs scheme not")
+
         return {
-            "state": self._extract_state(id),
+            "state": state,
             "action_mask": self._get_action_mask(id),
         }
 
@@ -150,7 +165,7 @@ class YanivEnv(MultiAgentEnv):
 
         return action_mask
 
-    def _extract_state(self, player_id):
+    def _extract_state_0(self, player_id):
         if self.game.is_over():
             return np.zeros((266,))
 
@@ -160,7 +175,6 @@ class YanivEnv(MultiAgentEnv):
         else:
             last_discard = discard_pile[-2]
 
-        
         available_discard = set([last_discard[0], last_discard[-1]])
         deadcards = [c for d in discard_pile for c in d if c not in available_discard]
 
@@ -175,7 +189,7 @@ class YanivEnv(MultiAgentEnv):
             known_cards,
         ]
 
-        if self.config['use_unkown_cards_in_state']:
+        if self.config["use_unkown_cards_in_state"]:
             unknown_cards = self.game.round.dealer.deck + [
                 c for c in next_player.hand if c not in known_cards
             ]
@@ -190,6 +204,54 @@ class YanivEnv(MultiAgentEnv):
 
         return obs
 
+    def _extract_state_1(self, player_id):
+        if self.game.is_over():
+            return np.zeros((262,))
+
+        discard_pile = self.game.round.discard_pile
+        if self.game.round.discarding:
+            last_discard = discard_pile[-1]
+        else:
+            last_discard = discard_pile[-2]
+
+        top_card = last_discard[0]
+        bottom_card = last_discard[-1]
+
+        deadcards = [
+            c for d in discard_pile for c in d if c not in (top_card, bottom_card)
+        ]
+
+        current_player = self.game.players[player_id]
+        next_player = self.game.players[self.game.round._get_next_player(player_id)]
+        known_cards = self.game.round.known_cards[player_id]
+
+        hand_enc = np.zeros(85)
+        known_enc = np.zeros(85)
+
+        if len(current_player.hand) > 0:
+            hand_one_hot = utils.one_hot_encode_cards(current_player.hand)
+            hand_enc[: hand_one_hot.shape[0]] = hand_one_hot
+
+        if len(known_cards) > 0:
+            known_one_hot = utils.one_hot_encode_cards(known_cards)
+            known_enc[: known_one_hot.shape[0]] = known_one_hot
+
+        opponent_hand_size = np.zeros(6)
+        opponent_hand_size[len(next_player.hand)] = 1
+
+        obs = [
+            hand_enc,
+            known_enc,
+            opponent_hand_size,
+            utils.one_hot_encode_card(top_card),
+            utils.one_hot_encode_card(bottom_card),
+            utils.encode_cards(deadcards),
+        ]
+
+        obs = np.concatenate(obs)
+
+        return obs
+
     def _get_player_string(self, id):
         return "player_{}".format(id)
 
@@ -197,8 +259,13 @@ class YanivEnv(MultiAgentEnv):
         return [self._get_player_string(i) for i in range(self.num_players)]
 
     def _get_state_shape(self):
-        base_shape = 214
-        if self.config['use_unkown_cards_in_state']:
-            base_shape += 52
-        
-        return base_shape
+        if self.obs_scheme == 0:
+            shape = 214
+            if self.config["use_unkown_cards_in_state"]:
+                shape += 52
+
+            return shape
+        elif self.obs_scheme == 1:
+            return 262
+        else:
+            raise Exception("obs scheme not")

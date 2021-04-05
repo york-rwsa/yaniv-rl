@@ -131,6 +131,20 @@ def encode_cards(cards: List[YanivCard]) -> np.ndarray:
         plane[card_id] = 1
     return plane
 
+def one_hot_encode_card(card: YanivCard) -> np.ndarray:
+    rank = np.zeros(13, dtype=int)
+    suit = np.zeros(4, dtype=int)
+    rank[card.get_rank_id()] = 1
+    suit[card.get_suit_id()] = 1
+
+    return np.concatenate((rank, suit))
+
+def one_hot_encode_cards(cards: List[YanivCard]) -> np.ndarray:
+    enccards = []
+    for card in cards:
+        enccards.append(one_hot_encode_card(card))
+    
+    return np.concatenate(enccards)
 
 def score_discard_action(action: str) -> int:
     if action not in DISCARD_ACTIONS:

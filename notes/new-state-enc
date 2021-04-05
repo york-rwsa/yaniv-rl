@@ -1,0 +1,14 @@
+05/04/2021
+
+possibly should try for a more one-hot state enc
+
+one card is encoded as 13,4, 13 for rank and 4 for suit so 1 hot len 17
+hand requires 5 so hand len = [5*17] = [65]
+
+top card = [17]
+bottom card = [17]
+
+known oppt cards = known of hand [65] + cards in hand [6] = [71]
+
+
+maybe still include deadcards as 52 array?
