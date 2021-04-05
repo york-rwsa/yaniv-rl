@@ -1,0 +1,61 @@
+Yaniv actions
+
+play single card
+52
+
+play pair of cards
+for each rank there are 4 cards so there are 4C2 combinations = 6
+so 6*13 = 78 possible ways of discarding pairs
+
+play 3 of a kind
+4C3 = 4 so 4*13 = 52
+
+play 4 of a kind 
+4C4 = 1 so 13
+
+So ignoring straights and jokers the number of possible actions is
+52 + 78 + 52 + 13 = 195
+
+---
+
+Straights?
+
+min 3 cards, max 5 cards.
+has to be in order
+of 13
+
+123, 234, 345, 456, 567, 678, 789, 89T, 9TJ, TJQ, JQK
+11 
+
+1234, 2345, 3456, 4567, 5678, 6789, 789T, 89TJ, 9TJQ, TJQK
+10
+
+12345, 23456, 34567, 45678, 56789, 6789T, 789TJ, 89TJQ, 9TJQK
+9
+
+---
+
+Possible action map
+Suits: H, D, C, S
+Ranks: 1, 2, 3, 4, 5, 6, 7, 8, 9, T, J, Q, K
+
+single actions: [H1, H2, etc....]
+Pair of cards: [H1D1, H1C1, etc ...] -< order does not matter here 
+
+
+order matters when playing more than two cards
+as far as which cards are in the center
+Tripple of cards: [H1D1C1, H1C1D1, D1H1C1] 
+
+order matters for straights, but only direction can change ie
+[H123, H321]
+
+---
+
+this is all ignoring jokers for the time being ... seems simpler without them
+
+--
+
+Should use simplified action space 
+All pairs, trips, quads always ordered club, diamond, heart, spade (alpha)
+Then only middle cards are changed
