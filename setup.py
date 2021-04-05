@@ -8,14 +8,15 @@ setuptools.setup(
         'yaniv_rl': ['game/jsondata/discard_actions.json']
     },
     install_requires=[
-        'rlcard>=0.2.5',
+        'rlcard',
         'numpy>=1.16.3',
         'termcolor',
         'tqdm',
         'gym',
         'pettingzoo',
         'ray[rllib]',
-        'supersuit'
+        'supersuit',
+        'wandb'
     ],
     requires_python='>=3.6',
     classifiers=[
