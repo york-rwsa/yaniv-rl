@@ -5,8 +5,8 @@ from ray.tune.trial import ExportFormat
 from ray.tune.utils.log import Verbosity
 from ray.tune.integration.wandb import WandbLoggerCallback
 
+from ray.rllib.agents.registry import get_trainer_class
 from ray.rllib.models import ModelCatalog
-from ray.rllib.agents.ppo.ppo import PPOTrainer
 
 import argparse
 import numpy as np
@@ -15,8 +15,8 @@ from yaniv_rl.envs.rllib_multiagent_yaniv import YanivEnv
 from yaniv_rl.utils.rllib import (
     YanivActionMaskModel,
     YanivCallbacks,
-    make_eval_func,
     YanivTrainer,
+    make_eval_func
 )
 
 
@@ -41,17 +41,16 @@ env_config = {
     "end_after_n_deck_replacements": 0,
     "end_after_n_steps": 130,
     "early_end_reward": 0,
-    "use_scaled_negative_reward": True,
-    "use_scaled_positive_reward": True,
+    "use_scaled_negative_reward": False,
+    "use_scaled_positive_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 30,
     "single_step": False,
     "step_reward": 0,
     "use_unkown_cards_in_state": False,
-    "use_dead_cards_in_state": True,
+    "use_dead_cards_in_state": False,
     "observation_scheme": 1,
 }
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -72,7 +71,7 @@ if __name__ == "__main__":
     cuda_avail()
 
     ray.init(
-        local_mode=False,
+        local_mode=True,
     )
 
     register_env("yaniv", lambda config: YanivEnv(config))
@@ -83,7 +82,7 @@ if __name__ == "__main__":
     act_space = env.action_space
 
     config = {
-        "algorithm": "PPO",
+        "algorithm": "R2D2",
         "env": "yaniv",
         "env_config": env_config,
         "framework": "torch",
@@ -113,13 +112,9 @@ if __name__ == "__main__":
             "custom_model": "yaniv_mask",
             "fcnet_hiddens": [512, 512],
         },
-        "batch_mode": "complete_episodes",
-        "train_batch_size": 32768,
-        "num_sgd_iter": 20,
-        "sgd_minibatch_size": 2048,
     }
 
-    resources = PPOTrainer.default_resource_request(config)
+    resources = get_trainer_class(config["algorithm"]).default_resource_request(config)
 
     results = tune.run(
         YanivTrainer,

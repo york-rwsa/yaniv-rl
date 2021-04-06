@@ -20,6 +20,5 @@ cfr_model/
 venv/
 logs/
 model/
-model.*
 checkpoint
 wandb/

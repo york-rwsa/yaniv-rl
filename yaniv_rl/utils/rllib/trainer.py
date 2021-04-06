@@ -1,6 +1,6 @@
 import ray
 
-from ray.rllib.agents.ppo.ppo import PPOTrainer
+from ray.rllib.agents.registry import get_trainer_class
 from ray import tune
 
 from . import shift_policies
@@ -8,7 +8,8 @@ from . import shift_policies
 
 class YanivTrainer(tune.Trainable):
     def setup(self, config):
-        self.trainer = PPOTrainer(env="yaniv", config=config)
+        algo = config.pop("algorithm")
+        self.trainer = get_trainer_class(algo)(env="yaniv", config=config)
         self.config = config
 
     def step(self):
