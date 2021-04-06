@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--num-gpus", type=float, default=1.0)
     parser.add_argument("--eval-num", type=int, default=200)
-    parser.add_argument("--eval-int", type=int, default=5)
+    parser.add_argument("--eval-every", type=int, default=5)
     parser.add_argument("--random-players", type=int, default=0)
     parser.add_argument("--restore", type=str, default="")
     parser.add_argument("--wandb-id", type=str, default=None)
@@ -105,11 +105,12 @@ if __name__ == "__main__":
             "policies_to_train": ["policy_1"],
         },
         "callbacks": YanivCallbacks,
-        "log_level": "INFO",
+        # "log_level": "INFO",
         "evaluation_num_workers": 0,
         "evaluation_config": {"explore": False},
-        "evaluation_interval": args.eval_int,
+        "evaluation_interval": args.eval_every,
         "custom_eval_function": make_eval_func(env_config, args.eval_num),
+        
         # hyper params
         "model": {
             "custom_model": "yaniv_mask",
