@@ -180,8 +180,9 @@ class YanivEnv(MultiAgentEnv):
         deadcards = [c for d in discard_pile for c in d if c not in available_discard]
 
         current_player = self.game.players[player_id]
-        next_player = self.game.players[self.game.round._get_next_player(player_id)]
-        known_cards = self.game.round.known_cards[player_id]
+        next_id = self.game.round._get_next_player(player_id)
+        next_player = self.game.players[next_id]
+        known_cards = self.game.round.known_cards[next_id]
 
         card_obs = [
             current_player.hand,
@@ -223,8 +224,9 @@ class YanivEnv(MultiAgentEnv):
         ]
 
         current_player = self.game.players[player_id]
-        next_player = self.game.players[self.game.round._get_next_player(player_id)]
-        known_cards = self.game.round.known_cards[player_id]
+        next_id = self.game.round._get_next_player(player_id)
+        next_player = self.game.players[next_id]
+        known_cards = self.game.round.known_cards[next_id]
 
         hand_enc = np.zeros(85)
         known_enc = np.zeros(85)
