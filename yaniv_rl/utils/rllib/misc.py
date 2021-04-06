@@ -45,7 +45,6 @@ def make_eval_func(env_config, eval_num):
             single_step=env_config.get("single_step", True)
         )
         agent_id = "player_0"
-        rules_id = "player_1"
 
         env = YanivEnv(env_config)
 
@@ -53,7 +52,7 @@ def make_eval_func(env_config, eval_num):
         draws = 0
         assafs = 0
         total_steps = 0
-        scores = [[], []]
+        scores = [[] for _ in range(env.num_players)]
         for _ in range(eval_num):
             done = {"__all__": False}
             obs = env.reset()
@@ -64,7 +63,7 @@ def make_eval_func(env_config, eval_num):
                     action = agent.compute_action(obs[agent_id], policy_id="policy_1")
                     obs, reward, done, info = env.step({agent_id: action})
                 else:
-                    state = env.game.get_state(1)
+                    state = env.game.get_state(env.current_player)
                     extracted_state = {}
                     extracted_state["raw_obs"] = state
                     extracted_state["raw_legal_actions"] = [
@@ -73,7 +72,8 @@ def make_eval_func(env_config, eval_num):
 
                     action = rule_agent.step(extracted_state)
                     obs, reward, done, info = env.step(
-                        {rules_id: action}, raw_action=True
+                        {env.current_player_string: action},
+                        raw_action=True
                     )
 
                 steps += 1
@@ -93,10 +93,9 @@ def make_eval_func(env_config, eval_num):
 
             s = env.game.round.scores
             if s is not None:
-                if s[0] > 0:
-                    scores[0].append(env.game.round.scores[0])
-                if s[1] > 0:
-                    scores[1].append(env.game.round.scores[1])
+                for i in range(env.num_players):
+                    if s[i] > i:
+                        scores[i].append(env.game.round.scores[i])
 
         eval_vs = "eval_rules_"
         metrics = {

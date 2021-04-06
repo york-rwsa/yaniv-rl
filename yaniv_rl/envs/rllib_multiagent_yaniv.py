@@ -1,15 +1,13 @@
-from yaniv_rl.utils.utils import one_hot_encode_cards
 from yaniv_rl import utils
 import numpy as np
-import copy
-from collections import Counter
-from ray import rllib
 from gym.spaces import Box, Dict, Discrete
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
 from yaniv_rl.game import Game
 
 DEFAULT_GAME_CONFIG = {
+    "n_players": 2,
+    "state_n_players": 2,
     "end_after_n_deck_replacements": 0,
     "end_after_n_steps": 100,
     "early_end_reward": 0,
@@ -28,20 +26,21 @@ DEFAULT_GAME_CONFIG = {
 class YanivEnv(MultiAgentEnv):
     def __init__(self, config={}):
         super(YanivEnv).__init__()
-        self.single_step = config.get("single_step", True)
-        self.obs_scheme = config.get("observation_scheme", 0)
-        self.num_players = 2
-
+        conf = DEFAULT_GAME_CONFIG.copy()
+        conf.update(config)
+        self.config = conf
+        
+        self.single_step = self.config.get("single_step", True)
+        self.obs_scheme = self.config.get("observation_scheme", 0)
+        self.num_players = self.config.get("n_players")
+        self.state_n_players = self.config.get("state_n_players")
+        self.step_reward = self.config.get("step_reward", 0)
+        
         self.game = Game(
             single_step_actions=self.single_step, num_players=self.num_players
         )
+        self.game.configure(self.config)
 
-        self.step_reward = config.get("step_reward", 0)
-
-        conf = DEFAULT_GAME_CONFIG.copy()
-        conf.update(config)
-        self.game.configure(conf)
-        self.config = conf
 
         self.action_space = Discrete(self.game.get_action_num())
         self.observation_space = Dict(
@@ -97,12 +96,6 @@ class YanivEnv(MultiAgentEnv):
                 for p in self._get_players()
             }
         else:
-            # if len(action) == 2 and len(action[0]) > 2:
-            #     # reward discarding multiple cards
-            #     reward = 0.01 * len(action[0]) / 2
-            # else:
-            #     reward = -0.1
-
             rewards = {self.current_player_string: self.step_reward}
             observations = {
                 self.current_player_string: self._get_players_observation(
@@ -168,7 +161,7 @@ class YanivEnv(MultiAgentEnv):
 
     def _extract_state_0(self, player_id):
         if self.game.is_over():
-            return np.zeros((266,))
+            return np.zeros(self._get_state_shape())
 
         discard_pile = self.game.round.discard_pile
         if self.game.round.discarding:
@@ -180,15 +173,22 @@ class YanivEnv(MultiAgentEnv):
         deadcards = [c for d in discard_pile for c in d if c not in available_discard]
 
         current_player = self.game.players[player_id]
-        next_id = self.game.round._get_next_player(player_id)
-        next_player = self.game.players[next_id]
-        known_cards = self.game.round.known_cards[next_id]
+
+        known_cards = []
+        hand_sizes = []
+        for i in range(self.state_n_players - 1):
+            next_id = self.game.round._get_next_player(player_id + i)
+            next_player = self.game.players[next_id]
+            known_cards.append(self.game.round.known_cards[next_id])
+            opponent_hand_size = np.zeros(6)
+            opponent_hand_size[len(next_player.hand)] = 1
+            hand_sizes.append(opponent_hand_size)
 
         card_obs = [
             current_player.hand,
             available_discard,
             deadcards,
-            known_cards,
+            *known_cards,
         ]
 
         if self.config["use_unkown_cards_in_state"]:
@@ -198,10 +198,9 @@ class YanivEnv(MultiAgentEnv):
             card_obs.append(unknown_cards)
 
         card_obs = np.ravel(list(map(utils.encode_cards, card_obs)))
-
-        opponent_hand_size = np.zeros(6)
-        opponent_hand_size[len(next_player.hand)] = 1
-
+        
+        hand_sizes = np.ravel(hand_sizes)
+        
         obs = np.concatenate((card_obs, opponent_hand_size))
 
         return obs
@@ -263,9 +262,12 @@ class YanivEnv(MultiAgentEnv):
 
     def _get_state_shape(self):
         if self.obs_scheme == 0:
-            shape = 214
+            shape = 162
             if self.config["use_unkown_cards_in_state"]:
                 shape += 52
+
+            if self.state_n_players > 1:
+                shape += 52 * (self.state_n_players - 1)
 
             return shape
         elif self.obs_scheme == 1:

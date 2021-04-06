@@ -49,7 +49,9 @@ env_config = {
     "step_reward": 0,
     "use_unkown_cards_in_state": False,
     "use_dead_cards_in_state": True,
-    "observation_scheme": 1,
+    "observation_scheme": 0,
+    "n_players": 3,
+    "state_n_players": 3
 }
 
 
