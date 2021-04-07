@@ -55,7 +55,7 @@ if __name__ == "__main__":
         "use_dead_cards_in_state": True,
         "observation_scheme": args.obs_scheme,
         "n_players": 2,
-        "state_n_players": 2,
+        "state_n_players": 3,
     }
 
     env = YanivEnv(env_config)
@@ -63,6 +63,7 @@ if __name__ == "__main__":
     act_space = env.action_space
 
     config = {
+        "num_gpus": 1,
         "env": "yaniv",
         "env_config": env_config,
         "framework": "torch",
@@ -83,7 +84,7 @@ if __name__ == "__main__":
         },
     }
 
-    ray.init(include_dashboard=False, local_mode=True)
+    ray.init(include_dashboard=False)
 
     trainer = PPOTrainer(env="yaniv", config=config)
     trainer.restore(args.checkpoint)
