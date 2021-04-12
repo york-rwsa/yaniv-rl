@@ -32,24 +32,34 @@ class YanivTournament:
         obs = self.env.reset()
         done = {"__all__": False}
 
+        states = [
+            t.get_policy("policy_1").model.get_initial_state() for t in self.trainers
+        ]
+
         steps = 0
         while not done["__all__"]:
             player = self.players[self.env.current_player]
             player_id = self.env.current_player_string
 
             if player in self.trainers:
-                action = player.compute_action(obs[player_id], policy_id="policy_1")
+                action, state, _ = player.compute_action(
+                    obs[player_id],
+                    policy_id="policy_1",
+                    state=states[self.env.current_player],
+                    full_fetch=True,
+                )
+                states[self.env.current_player] = state
 
                 if self.env.game.round.discarding:
                     dec_action = self.env._decode_action(action)
                     if dec_action != utils.YANIV_ACTION:
                         self.player_stats[player_id]["discard_freqs"][
-                            str(int(len(dec_action) / 2)) 
+                            str(int(len(dec_action) / 2))
                         ] += 1
                 else:
                     pickup_action = self.env._decode_action(action)
                     self.player_stats[player_id]["pickup_freqs"][pickup_action] += 1
-                    
+
                 obs, reward, done, info = self.env.step({player_id: action})
             else:
                 state = self.env.game.get_state(self.env.current_player)
@@ -63,11 +73,10 @@ class YanivTournament:
                 if self.env.game.round.discarding:
                     if action != utils.YANIV_ACTION:
                         self.player_stats[player_id]["discard_freqs"][
-                            str(int(len(action) / 2)) 
+                            str(int(len(action) / 2))
                         ] += 1
                 else:
                     self.player_stats[player_id]["pickup_freqs"][action] += 1
-                    
 
                 obs, reward, done, info = self.env.step(
                     {player_id: action}, raw_action=True
@@ -101,6 +110,13 @@ class YanivTournament:
 
         self.games_played += 1
 
+    def reset_game(self):
+        self.scores = [[] for _ in range(self.env.num_players)]
+
+    def run_game(self):
+        self.reset_game()
+        self.run_episode()
+
     def run(self, eval_num):
         self.reset_stats()
 
@@ -130,9 +146,7 @@ class YanivTournament:
                     "4": 0,
                     "5": 0,
                 },
-                "pickup_freqs": {
-                    a: 0 for a in utils.pickup_actions
-                }
+                "pickup_freqs": {a: 0 for a in utils.pickup_actions},
             }
             for player_id in self.env._get_players()
         }

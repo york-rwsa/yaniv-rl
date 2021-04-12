@@ -50,8 +50,8 @@ env_config = {
     "use_unkown_cards_in_state": False,
     "use_dead_cards_in_state": True,
     "observation_scheme": 0,
-    "n_players": 3,
-    "state_n_players": 3
+    "n_players": 2,
+    "state_n_players": 2
 }
 
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     act_space = env.action_space
 
     config = {
-        "algorithm": "PPO",
+        "algorithm": "A3C",
         "env": "yaniv",
         "env_config": env_config,
         "framework": "torch",
@@ -117,9 +117,10 @@ if __name__ == "__main__":
             "fcnet_hiddens": [512, 512],
         },
         "batch_mode": "complete_episodes",
-        "train_batch_size": 32768,
-        "num_sgd_iter": 20,
-        "sgd_minibatch_size": 2048,
+        "rollout_fragment_length": 100,
+        # "train_batch_size": 32768,
+        # "num_sgd_iter": 20,
+        # "sgd_minibatch_size": 2048,
     }
 
     resources = PPOTrainer.default_resource_request(config)
@@ -129,7 +130,7 @@ if __name__ == "__main__":
         resources_per_trial=resources,
         name=args.name,
         config=config,
-        stop={"training_iteration": 1000},
+        stop={"training_iteration": 20000},
         checkpoint_freq=5,
         checkpoint_at_end=True,
         verbose=Verbosity.V3_TRIAL_DETAILS,

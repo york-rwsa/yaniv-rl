@@ -1,7 +1,4 @@
 import numpy as np
-import rlcard
-
-from rlcard.models.model import Model
 from yaniv_rl import utils
 
 from operator import methodcaller
@@ -169,26 +166,3 @@ class YanivNoviceRuleAgent(object):
         """
         probabilities = []
         return self.step(state), probabilities
-
-
-class YanivNoviceRuleModel(Model):
-    """Yaniv Rule Model"""
-
-    def __init__(self):
-        """Load pre-trained model"""
-        super().__init__()
-        env = rlcard.make("yaniv")
-        rule_agent = YanivNoviceRuleAgent()
-        self.rule_agents = [rule_agent for _ in range(env.player_num)]
-
-    @property
-    def agents(self):
-        """Get a list of agents for each position in a the game
-
-        Returns:
-            agents (list): A list of agents
-
-        Note: Each agent should be just like RL agent with step and eval_step
-              functioning well.
-        """
-        return self.rule_agents

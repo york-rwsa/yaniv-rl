@@ -1,6 +1,3 @@
-from os import execv
-from rlcard.core import Card
-
 from yaniv_rl import utils
 from yaniv_rl.game.player import YanivPlayer
 from yaniv_rl.game.dealer import YanivDealer

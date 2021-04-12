@@ -17,9 +17,6 @@ class YanivActionMaskModel(TorchModelV2, nn.Module):
         true_obs_space = Box(
             low=0, high=1, shape=obs_space.original_space["state"].shape, dtype=int
         )
-        true_obs_space = Box(
-            low=0, high=1, shape=obs_space.original_space["state"].shape, dtype=int
-        )
         self.action_model = TorchFC(
             true_obs_space, action_space, num_outputs, model_config, name
         )

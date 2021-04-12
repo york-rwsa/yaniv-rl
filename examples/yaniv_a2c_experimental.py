@@ -1,6 +1,4 @@
-from multiprocessing.context import DefaultContext
 from rlcard.agents.random_agent import RandomAgent
-import rlcard
 
 from yaniv_rl.envs import make
 from yaniv_rl.utils import redirect_to_tqdm
