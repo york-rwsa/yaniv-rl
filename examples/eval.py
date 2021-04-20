@@ -8,6 +8,7 @@ from ray.tune.integration.wandb import WandbLoggerCallback
 
 from ray.rllib.models import ModelCatalog
 from ray.rllib.agents.ppo.ppo import PPOTrainer
+from ray.rllib.agents.a3c.a3c import A3CTrainer
 
 import argparse
 import numpy as np
@@ -31,12 +32,6 @@ def policy_mapping_fn(agent_id):
         )
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--eval-num", type=int, default=200)
-    parser.add_argument("--checkpoint", type=str, default="/home/jippo/ray_results/YanivTrainer_2021-04-06_12-24-49/YanivTrainer_yaniv_b2b18_00000_0_2021-04-06_12-24-49/checkpoint_000375/checkpoint-200")
-    parser.add_argument("--obs-scheme", type=int, default=1)
-    args = parser.parse_args()
-
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
 
@@ -52,7 +47,7 @@ if __name__ == "__main__":
         "step_reward": 0,
         "use_unkown_cards_in_state": False,
         "use_dead_cards_in_state": True,
-        "observation_scheme": args.obs_scheme,
+        "observation_scheme": 0,
         "n_players": 2,
         "state_n_players": 3,
     }
@@ -85,10 +80,16 @@ if __name__ == "__main__":
 
     ray.init(include_dashboard=False)
 
-    trainer = PPOTrainer(env="yaniv", config=config)
-    trainer.restore(args.checkpoint)
+    checkpoint = "/home/jippo/ray_results/YanivTrainer_2021-04-14_10-29-11/YanivTrainer_yaniv_df2c8_00000_0_2021-04-14_10-29-12/checkpoint_032355/checkpoint-16350"
+    
 
-    tourny = YanivTournament(env_config, trainers=[trainer])
-    tourny.run(args.eval_num)
+    trainer = A3CTrainer(env="yaniv", config=config)
+    trainer.restore(checkpoint)
+
+    t13k = A3CTrainer(env="yaniv", config=config)
+    t13k.restore("/home/jippo/ray_results/YanivTrainer_2021-04-12_21-45-07/YanivTrainer_yaniv_f71d8_00000_0_2021-04-12_21-45-07/checkpoint_014760/checkpoint-14760")
+
+    tourny = YanivTournament(env_config, trainers=[trainer, t13k])
+    tourny.run(1000)
     print("\n\nRESULTS:\n")
     tourny.print_stats()

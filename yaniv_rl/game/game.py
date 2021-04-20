@@ -95,15 +95,18 @@ class YanivGame(object):
             his_players = deepcopy(self.players)
             self.history.append((his_dealer, his_players, his_round))
 
+        self.players[self.round.current_player].actions.append(action)
         self.actions.append(action)
         if self._end_after_n_steps > 0 and len(self.actions) >= self._end_after_n_steps:
             self.round.winner = -1
             self.round.is_over = True
-        
+
         if not self._single_step_actions or action == utils.YANIV_ACTION:
             return self._step(action)
-        
-        assert isinstance(action, tuple), "in single step actions the action must be a tuple"
+
+        assert isinstance(
+            action, tuple
+        ), "in single step actions the action must be a tuple"
         cur_player = self.round.current_player
         _, next_player = self._step(action[0])
         assert cur_player == next_player
@@ -205,12 +208,12 @@ class YanivGame(object):
         if utils.YANIV_ACTION in legal_actions:
             joint_legal_actions.append(utils.YANIV_ACTION)
             legal_actions.remove(utils.YANIV_ACTION)
-        
+
         for d, p in product(legal_actions, utils.pickup_actions):
             joint_legal_actions.append((d, p))
 
         return joint_legal_actions
-        
+
     def get_player_num(self):
         """Return the number of players in Limit Texas Hold'em
 
@@ -245,6 +248,31 @@ class YanivGame(object):
             (boolean): True if the game is over
         """
         return self.round.is_over
+
+    def render(self):
+        header = lambda x: "{:=^20}".format(" {} ".format(x))
+        print(header("STEP {}".format(len(self.actions))))
+        print("Discard Pile: {}".format(self.round.discard_pile))
+
+        player_f = "PLAYER {}"
+        cur_f = "*{}*".format(player_f)
+
+        for player in self.players:
+            
+            print(
+                header(
+                    (
+                        player_f
+                        if player.player_id != self.round.current_player
+                        else cur_f
+                    ).format(player.player_id)
+                )
+            )
+
+            print("Actions: {}".format(", ".join(player.actions)))
+            print("Hand:    " + "  ".join([c.__str__() for c in player.hand]))
+
+            print()
 
 
 ## For test

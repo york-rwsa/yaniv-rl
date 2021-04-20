@@ -13,6 +13,7 @@ class YanivPlayer(object):
         self.np_random = np_random
         self.player_id = player_id
         self.hand = [] # type: List[YanivCard]
+        self.actions = []
 
     def get_player_id(self):
         ''' Return the id of the player

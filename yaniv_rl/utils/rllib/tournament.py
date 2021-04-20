@@ -27,9 +27,14 @@ class YanivTournament:
                 self.players.append(self.trainers[i])
             else:
                 self.players.append(self.rule_agent)
+                
+        self.reset_stats()
 
-    def run_episode(self):
+    def run_episode(self, render=False):
         obs = self.env.reset()
+        if render:
+            self.env.game.render()
+        
         done = {"__all__": False}
 
         states = [
@@ -84,6 +89,9 @@ class YanivTournament:
 
             steps += 1
 
+            if render:
+                self.env.game.render()
+            
         self.game_stats["avg_roundlen"] += steps
 
         winner = self.env.game.round.winner

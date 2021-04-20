@@ -1,22 +1,16 @@
 from yaniv_rl.utils.rllib.tournament import YanivTournament
 import ray
-from ray import tune
-from ray.tune import register_env
-from ray.tune.trial import ExportFormat
-from ray.tune.utils.log import Verbosity
-from ray.tune.integration.wandb import WandbLoggerCallback
 
+from ray.tune import register_env
 from ray.rllib.models import ModelCatalog
 from ray.rllib.agents.ppo.ppo import PPOTrainer
-
+from ray.rllib.agents.a3c.a3c import A3CTrainer
 import argparse
 import numpy as np
 
 from yaniv_rl.envs.rllib_multiagent_yaniv import YanivEnv
 from yaniv_rl.utils.rllib import (
     YanivActionMaskModel,
-    YanivCallbacks,
-    make_eval_func,
 )
 
 
@@ -33,8 +27,9 @@ def policy_mapping_fn(agent_id):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--eval-num", type=int, default=200)
-    parser.add_argument("--checkpoint", type=str, default="/home/jippo/ray_results/YanivTrainer_2021-04-06_12-24-49/YanivTrainer_yaniv_b2b18_00000_0_2021-04-06_12-24-49/checkpoint_000375/checkpoint-200")
-    parser.add_argument("--obs-scheme", type=int, default=1)
+    parser.add_argument("--ppo-checkpoint", type=str, default="/home/jippo/ray_results/YanivTrainer_2021-04-03_21-40-03/YanivTrainer_yaniv_c49f4_00000_0_2021-04-03_21-40-03/checkpoint_001580/checkpoint-225")
+    parser.add_argument("--a3c-checkpoint", type=str, default="/home/jippo/ray_results/YanivTrainer_2021-04-11_23-01-13/YanivTrainer_yaniv_6e345_00000_0_2021-04-11_23-01-13/checkpoint_021605/checkpoint-13385")
+    parser.add_argument("--obs-scheme", type=int, default=0)
     args = parser.parse_args()
 
     register_env("yaniv", lambda config: YanivEnv(config))
@@ -54,7 +49,7 @@ if __name__ == "__main__":
         "use_dead_cards_in_state": True,
         "observation_scheme": args.obs_scheme,
         "n_players": 2,
-        "state_n_players": 3,
+        "state_n_players": 2,
     }
 
     env = YanivEnv(env_config)
@@ -85,10 +80,15 @@ if __name__ == "__main__":
 
     ray.init(include_dashboard=False)
 
-    trainer = PPOTrainer(env="yaniv", config=config)
-    trainer.restore(args.checkpoint)
+    ppo = PPOTrainer(env="yaniv", config=config)
+    ppo.restore(args.ppo_checkpoint)
 
-    tourny = YanivTournament(env_config, trainers=[trainer])
-    tourny.run(args.eval_num)
-    print("\n\nRESULTS:\n")
-    tourny.print_stats()
+    a3c = A3CTrainer(env="yaniv", config=config)
+    a3c.restore(args.a3c_checkpoint)
+
+    tourney = YanivTournament(env_config, trainers=[ppo, a3c])
+    tourney.run_episode(True)
+    tourney.print_stats()
+    # tourny.run(args.eval_num)
+    # print("\n\nRESULTS:\n")
+    # tourny.print_stats()
