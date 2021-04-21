@@ -23,6 +23,7 @@ class YanivGame(object):
         self._use_scaled_positive_reward = False
         self._max_negative_reward = -1
         self._negative_score_cutoff = 50
+        self._starting_player = "random"
 
         self._single_step_actions = single_step_actions
 
@@ -53,7 +54,9 @@ class YanivGame(object):
             self.dealer,
             self.num_players,
             self.np_random,
-            starting_player=self.np_random.randint(0, self.num_players),
+            starting_player=self.np_random.randint(0, self.num_players)
+            if self._starting_player == "random"
+            else self._starting_player,
         )
         self.round.flip_top_card()
 
@@ -74,6 +77,7 @@ class YanivGame(object):
         self._use_scaled_positive_reward = config["use_scaled_positive_reward"]
         self._max_negative_reward = config["max_negative_reward"]
         self._negative_score_cutoff = config["negative_score_cutoff"]
+        self._starting_player = config["starting_player"]
 
     def step(self, action):
         """Get the next state
@@ -258,7 +262,7 @@ class YanivGame(object):
         cur_f = "*{}*".format(player_f)
 
         for player in self.players:
-            
+
             print(
                 header(
                     (

@@ -13,7 +13,6 @@ sonar-project.properties
 .coverage*
 docs/rst
 docs/sphinx
-experiments/
 newtest/
 dist/
 cfr_model/
