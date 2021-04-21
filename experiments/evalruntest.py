@@ -1,3 +1,4 @@
+import json
 import logging
 import math
 from yaniv_rl import utils
@@ -22,6 +23,8 @@ from yaniv_rl.utils.rllib import (
     YanivCallbacks,
 )
 
+import csv
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,11 +42,7 @@ class YanivCallbacks(DefaultCallbacks):
 
         metrics = {}
         for pid in env._get_players():
-            metrics.update({
-                "draw": 0,
-                pid + "_win": 0,
-                pid + "_assaf": 0
-            })
+            metrics.update({"draw": 0, pid + "_win": 0, pid + "_assaf": 0})
 
         winner = env.game.round.winner
         if winner == -1:
@@ -65,7 +64,7 @@ class YanivCallbacks(DefaultCallbacks):
             for i in range(env.num_players):
                 if s[i] > 0:
                     metrics[env._get_player_string(i) + "_losing_score"] = s[i]
-        
+
         episode.custom_metrics.update(metrics)
 
 
@@ -107,6 +106,9 @@ def eval_func(trainer, workers):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--eval-num", type=int, default=200)
+    parser.add_argument("--num-workers", type=int, default=6)
+    parser.add_argument("--cpus-per-worker", type=float, default=0.5)
+    parser.add_argument("--cpus-for-driver", type=float, default=6)
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -116,6 +118,9 @@ if __name__ == "__main__":
 
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
+
+    with open("./scores.json") as f:
+        handscores = json.load(f)
 
     env_config = {
         "end_after_n_deck_replacements": 0,
@@ -132,7 +137,8 @@ if __name__ == "__main__":
         "observation_scheme": 0,
         "n_players": 2,
         "state_n_players": 2,
-        # "starting_player": ,
+        "starting_player": "random",
+        "starting_hands": {0: handscores["36"]},
     }
 
     env = YanivEnv(env_config)
@@ -159,22 +165,40 @@ if __name__ == "__main__":
             "custom_model": "yaniv_mask",
             "fcnet_hiddens": [512, 512],
         },
-
         "num_envs_per_worker": 1,
-        "num_cpus_per_worker": 0.5,
-        "num_cpus_for_driver": 0.5,
+        "num_cpus_per_worker": args.cpus_per_worker,
+        "num_cpus_for_driver": args.cpus_for_driver,
         "num_workers": 1,
-        "evaluation_num_workers": 6,
+        "evaluation_num_workers": args.num_workers,
         "evaluation_num_episodes": args.eval_num,
-        "evaluation_interval": 1
+        "evaluation_interval": 1,
     }
 
-    ray.init(include_dashboard=False)
+    ray.init(include_dashboard=False, local_mode=False)
 
-    trainer = A3CTrainer(env="yaniv", config=config)
-    trainer.restore(args.checkpoint)
+    results = []
 
-    metrics = trainer._evaluate()
-    metrics["evaluation"].pop("hist_stats")
+    for score, hands in handscores.items():
+        if len(hands) < 1:
+            continue
+    
+        config["env_config"].update({"starting_hands": {0: hands}})
 
-    print(pretty_print(metrics))
+        trainer = A3CTrainer(env="yaniv", config=config)
+        trainer.restore(args.checkpoint)
+
+        metrics = trainer._evaluate()
+        metrics["evaluation"].pop("hist_stats")
+
+        print(pretty_print(metrics))
+
+
+        stats = {k: v for k, v in metrics['evaluation']['custom_metrics'].items() if k.endswith("mean")}
+        stats['starting_hand_score'] = score
+        results.append(stats)
+
+        trainer.cleanup()
+    
+
+    with open("output.json", "w") as f:
+        json.dump(results, f, indent=4)
