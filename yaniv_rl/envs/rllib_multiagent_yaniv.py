@@ -20,7 +20,8 @@ DEFAULT_GAME_CONFIG = {
     "use_unkown_cards_in_state": True,
     "use_dead_cards_in_state": True,
     "observation_scheme": 0,
-    "starting_player": "random"
+    "starting_player": "random",
+    "starting_hands": {}
 }
 
 

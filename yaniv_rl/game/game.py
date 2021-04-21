@@ -1,6 +1,7 @@
 from copy import deepcopy
 from itertools import product
 import numpy as np
+from numpy.lib.arraysetops import isin
 
 from yaniv_rl.game.dealer import YanivDealer
 from yaniv_rl.game.player import YanivPlayer
@@ -24,6 +25,7 @@ class YanivGame(object):
         self._max_negative_reward = -1
         self._negative_score_cutoff = 50
         self._starting_player = "random"
+        self._starting_hands = {}
 
         self._single_step_actions = single_step_actions
 
@@ -40,14 +42,34 @@ class YanivGame(object):
 
         # Initialize a dealer that can deal cards
         self.dealer = YanivDealer(self.np_random)
-
         # Initialize four players to play the game
         self.players = [YanivPlayer(i, self.np_random) for i in range(self.num_players)]
 
+        # deal with predefined starting hands
+        for pid, starting_hand in self._starting_hands.items():
+            player = self.players[pid]
+
+            if isinstance(starting_hand, list):
+                starting_hand = np.random.choice(starting_hand)
+
+            assert len(starting_hand) == 10
+            
+            cards = list(filter(lambda c: str(c) in starting_hand, self.dealer.deck))
+            for card in cards:
+                player.hand.append(card)
+                self.dealer.deck.remove(card)
+            assert len(player.hand) == 5
+    
         # Deal 5 cards to each player
-        for _ in range(utils.INITIAL_NUMBER_OF_CARDS):
-            for player in self.players:
+        for player in self.players:
+            if player.player_id in self._starting_hands.keys():
+                continue
+
+            for _ in range(utils.INITIAL_NUMBER_OF_CARDS):
                 player.hand.append(self.dealer.draw_card())
+
+        for player in self.players:
+            player.save_starting_hand()
 
         # Initialize a Round
         self.round = YanivRound(
@@ -78,6 +100,7 @@ class YanivGame(object):
         self._max_negative_reward = config["max_negative_reward"]
         self._negative_score_cutoff = config["negative_score_cutoff"]
         self._starting_player = config["starting_player"]
+        self._starting_hands = config["starting_hands"]
 
     def step(self, action):
         """Get the next state
