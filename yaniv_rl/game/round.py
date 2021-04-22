@@ -82,64 +82,8 @@ class YanivRound(object):
         if utils.get_hand_score(hand) <= 7:
             legal_actions.append("yaniv")
 
-        # can discard single cards
-        for card in hand:
-            legal_actions.append(card.suit + card.rank)
-
-        suitKey = lambda c: c.suit
-        rankKey = lambda c: c.get_rank_as_int()
-        # groups of rank
-        for rank, group in groupby(sorted(hand, key=rankKey), key=rankKey):
-            group = sorted(list(group), key=suitKey)
-
-            if len(group) == 1:
-                continue
-
-            if len(group) >= 2:
-                # combinations of 2 cards
-                for combo in combinations(group, 2):
-                    legal_actions.append(utils.cardlist_to_action(combo))
-
-            if len(group) >= 3:
-                for combo in combinations(group, 3):
-                    for c in combo:
-                        seq = [s for s in combo if c != s]
-                        seq.insert(1, c)
-                        legal_actions.append(utils.cardlist_to_action(seq))
-
-            if len(group) == 4:
-                for combo in combinations(group, 2):
-                    outer = list(combo)
-                    inner = [c for c in group if c not in outer]
-                    outer[1:1] = inner
-                    legal_actions.append(utils.cardlist_to_action(outer))
-
-        # straights
-        for suit, group in groupby(sorted(hand, key=suitKey), key=suitKey):
-            cards = sorted(group, key=rankKey)
-
-            for _, straight in groupby(
-                enumerate(cards), key=lambda x: x[0] - x[1].get_rank_as_int()
-            ):
-                straight = list(straight)
-                if len(straight) < 3:
-                    continue
-
-                straight = [s[1] for s in straight]
-
-                # whole straight
-                legal_actions.append(utils.cardlist_to_action(straight))
-
-                if len(straight) >= 4:
-                    legal_actions.append(utils.cardlist_to_action(straight[0:3]))
-                    legal_actions.append(utils.cardlist_to_action(straight[1:4]))
-
-                if len(straight) == 5:
-                    legal_actions.append(utils.cardlist_to_action(straight[2:5]))
-
-                    legal_actions.append(utils.cardlist_to_action(straight[0:4]))
-                    legal_actions.append(utils.cardlist_to_action(straight[1:5]))
-
+        legal_actions.extend(utils.get_legal_hand_actions(hand))
+        
         return legal_actions
 
     def get_state(self, players, player_id):

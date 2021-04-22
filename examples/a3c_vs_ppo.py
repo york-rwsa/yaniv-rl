@@ -78,7 +78,7 @@ if __name__ == "__main__":
         },
     }
 
-    ray.init(include_dashboard=False)
+    ray.init(include_dashboard=False, local_mode=True)
 
     ppo = PPOTrainer(env="yaniv", config=config)
     ppo.restore(args.ppo_checkpoint)
@@ -86,9 +86,9 @@ if __name__ == "__main__":
     a3c = A3CTrainer(env="yaniv", config=config)
     a3c.restore(args.a3c_checkpoint)
 
-    tourney = YanivTournament(env_config, trainers=[ppo, a3c])
-    tourney.run_episode(True)
+    tourney = YanivTournament(env_config, trainers=[a3c], opponent="intermediate")
+    # tourney.run_episode(True)
+    # tourney.print_stats()
+    tourney.run(args.eval_num)
+    print("\n\nRESULTS:\n")
     tourney.print_stats()
-    # tourny.run(args.eval_num)
-    # print("\n\nRESULTS:\n")
-    # tourny.print_stats()

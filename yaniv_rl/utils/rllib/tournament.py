@@ -4,20 +4,27 @@ import yaml
 
 import numpy as np
 from yaniv_rl.envs.rllib_multiagent_yaniv import YanivEnv
-from yaniv_rl.models.yaniv_rule_models import YanivNoviceRuleAgent
+from yaniv_rl.models.yaniv_rule_models import YanivNoviceRuleAgent, YanivIntermediateRuleAgent
 
 from copy import deepcopy
 from ray.tune.logger import pretty_print
 
 
 class YanivTournament:
-    def __init__(self, env_config, trainers=[]):
+    def __init__(self, env_config, trainers=[], opponent="novice"):
         self.env_config = env_config
         self.trainers = trainers
 
-        self.rule_agent = YanivNoviceRuleAgent(
-            single_step=env_config.get("single_step", True)
-        )
+        if opponent == "novice": 
+            self.rule_agent = YanivNoviceRuleAgent(
+                single_step=env_config.get("single_step", True)
+            )
+        elif opponent == "intermediate":
+            self.rule_agent = YanivIntermediateRuleAgent(
+                single_step=env_config.get("single_step", True)
+            )
+        else:
+            raise ValueError("opponent wrong {}".format(opponent))
 
         self.env = YanivEnv(env_config)
 
