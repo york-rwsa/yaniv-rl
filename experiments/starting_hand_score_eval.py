@@ -1,6 +1,9 @@
+import copy
 import json
 import logging
 import math
+
+from ray.rllib.env.env_context import EnvContext
 from yaniv_rl import utils
 from ray.rllib.agents.callbacks import DefaultCallbacks
 
@@ -105,10 +108,10 @@ def eval_func(trainer, workers):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--eval-num", type=int, default=200)
-    parser.add_argument("--num-workers", type=int, default=6)
+    parser.add_argument("--eval-num", type=int, default=5)
+    parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--cpus-per-worker", type=float, default=0.5)
-    parser.add_argument("--cpus-for-driver", type=float, default=6)
+    parser.add_argument("--cpus-for-driver", type=float, default=0.5)
     parser.add_argument(
         "--checkpoint",
         type=str,
@@ -119,7 +122,7 @@ if __name__ == "__main__":
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
 
-    with open("./scores.json") as f:
+    with open("/home/jippo/Code/yaniv/yaniv-rl/experiments/scores.json") as f:
         handscores = json.load(f)
 
     env_config = {
@@ -138,7 +141,7 @@ if __name__ == "__main__":
         "n_players": 2,
         "state_n_players": 2,
         "starting_player": "random",
-        "starting_hands": {0: handscores["36"]},
+        "starting_hands": {},
     }
 
     env = YanivEnv(env_config)
@@ -178,27 +181,46 @@ if __name__ == "__main__":
 
     results = []
 
-    for score, hands in handscores.items():
-        if len(hands) < 1:
-            continue
-    
-        config["env_config"].update({"starting_hands": {0: hands}})
+    trainer = A3CTrainer(env="yaniv", config=config)
+    trainer.restore(args.checkpoint)
 
-        trainer = A3CTrainer(env="yaniv", config=config)
-        trainer.restore(args.checkpoint)
+    def make_update_env_fn(env_conf):
+        def update_env_conf(env):
+            env.config.update(env_conf)
+            env.game.configure(env.config)
+            
+        def update_env_fn(worker):
+            worker.foreach_env(update_env_conf)
 
-        metrics = trainer._evaluate()
-        metrics["evaluation"].pop("hist_stats")
+        return update_env_fn
 
-        print(pretty_print(metrics))
+    try:
+        for score, hands in handscores.items():
+            if len(hands) < 1:
+                continue
+
+            config["env_config"]["starting_hands"] = {0: hands}
+
+            print("\n\n**** updating env config: starting_hand_score: {} ****\n".format(score))
+            trainer.evaluation_workers.foreach_worker(
+                make_update_env_fn(config["env_config"])
+            )
+            
+            metrics = trainer._evaluate()
+            metrics["evaluation"].pop("hist_stats")
+
+            print(pretty_print(metrics))
+
+            stats = {
+                k: v
+                for k, v in metrics["evaluation"]["custom_metrics"].items()
+                if k.endswith("mean")
+            }
+            stats["starting_hand_score"] = score
+            results.append(stats)
 
 
-        stats = {k: v for k, v in metrics['evaluation']['custom_metrics'].items() if k.endswith("mean")}
-        stats['starting_hand_score'] = score
-        results.append(stats)
-
-        trainer.cleanup()
-    
-
-    with open("output.json", "w") as f:
-        json.dump(results, f, indent=4)
+        with open("output.json", "w") as f:
+            json.dump(results, f, indent=4)
+    finally:
+        trainer.stop()
