@@ -1,0 +1,74 @@
+{
+  "algorithm": "A3C",
+  "batch_mode": "complete_episodes",
+  "callbacks": "<class 'yaniv_rl.utils.rllib.callbacks.YanivCallbacks'>",
+  "custom_eval_function": "<function make_eval_func.<locals>.yaniv_eval at 0x7fb739a5b170>",
+  "env": "yaniv",
+  "env_config": {
+    "early_end_reward": 0,
+    "end_after_n_deck_replacements": 0,
+    "end_after_n_steps": 130,
+    "max_negative_reward": -1,
+    "n_players": 2,
+    "negative_score_cutoff": 30,
+    "observation_scheme": 1,
+    "single_step": false,
+    "state_n_players": 2,
+    "step_reward": 0,
+    "use_dead_cards_in_state": true,
+    "use_scaled_negative_reward": true,
+    "use_scaled_positive_reward": true,
+    "use_unkown_cards_in_state": false
+  },
+  "evaluation_config": {
+    "explore": false
+  },
+  "evaluation_interval": 20,
+  "evaluation_num_workers": 0,
+  "framework": "torch",
+  "model": {
+    "custom_model": "yaniv_mask",
+    "fcnet_hiddens": [
+      512,
+      512
+    ]
+  },
+  "multiagent": {
+    "policies": {
+      "policy_1": [
+        null,
+        "Dict(action_mask:Box(0.0, 1.0, (488,), float32), state:Box(0, 1, (262,), int64))",
+        "Discrete(488)",
+        {}
+      ],
+      "policy_2": [
+        null,
+        "Dict(action_mask:Box(0.0, 1.0, (488,), float32), state:Box(0, 1, (262,), int64))",
+        "Discrete(488)",
+        {}
+      ],
+      "policy_3": [
+        null,
+        "Dict(action_mask:Box(0.0, 1.0, (488,), float32), state:Box(0, 1, (262,), int64))",
+        "Discrete(488)",
+        {}
+      ],
+      "policy_4": [
+        null,
+        "Dict(action_mask:Box(0.0, 1.0, (488,), float32), state:Box(0, 1, (262,), int64))",
+        "Discrete(488)",
+        {}
+      ]
+    },
+    "policies_to_train": [
+      "policy_1"
+    ],
+    "policy_mapping_fn": "<function policy_mapping_fn at 0x7fb74db6add0>"
+  },
+  "num_cpus_for_driver": 0.5,
+  "num_cpus_per_worker": 0.5,
+  "num_envs_per_worker": 1,
+  "num_gpus": 1.0,
+  "num_workers": 14,
+  "rollout_fragment_length": 100
+}
