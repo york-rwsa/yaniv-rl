@@ -1,3 +1,4 @@
+import pickle5 as pickle
 import os
 import ray
 
@@ -37,9 +38,13 @@ class YanivTrainer(tune.Trainable):
 
         if self.export_model_every is not None and self.iteration % self.export_model_every == 0:
             # save model
-            path = os.path.join(self.logdir, 'models/model-{}'.format(self.iteration))
-            self.trainer.get_policy("policy_1").export_model(path)
-            print("model saved to", path)
+            path = os.path.join(self.logdir, 'models/model-{}.pkl'.format(self.iteration))
+            state = self.trainer.get_policy("policy_1").get_state()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'wb') as f:
+                pickle.dump(state, f)
+
+            print("pickled state to", path)
 
         return result
 
