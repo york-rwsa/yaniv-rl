@@ -1,3 +1,4 @@
+import os
 import ray
 
 from ray.rllib.agents.registry import get_trainer_class
@@ -10,6 +11,8 @@ class YanivTrainer(tune.Trainable):
     def setup(self, config):
         algo = config.pop("algorithm")
         eval_weights = config.pop("evaluation_weights", None)
+
+        self.export_model_every = config.pop("export_model_every", 10)
         self.update_winrate = config.pop("update_self_play_param_win_rate", 0.5)
         
         self.trainer = get_trainer_class(algo)(env="yaniv", config=config)
@@ -30,6 +33,13 @@ class YanivTrainer(tune.Trainable):
             weights = ray.put(self.trainer.workers.local_worker().save())
             self.trainer.workers.foreach_worker(lambda w: w.restore(ray.get(weights)))
             print("weights synced")
+
+
+        if self.export_model_every is not None and self.iteration % self.export_model_every == 0:
+            # save model
+            path = os.path.join(self.logdir, 'models/model-{}'.format(self.iteration))
+            self.trainer.get_policy("policy_1").export_model(path)
+            print("model saved to", path)
 
         return result
 
