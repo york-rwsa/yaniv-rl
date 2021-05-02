@@ -38,7 +38,7 @@ class YanivTrainer(tune.Trainable):
 
         if self.export_model_every is not None and self.iteration % self.export_model_every == 0:
             # save model
-            path = os.path.join(self.logdir, 'models/model-{}.pkl'.format(self.iteration))
+            path = os.path.join(self.logdir, 'models/model-{:06d}.pkl'.format(self.iteration))
             state = self.trainer.get_policy("policy_1").get_state()
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'wb') as f:
