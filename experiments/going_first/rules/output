@@ -1,0 +1,11 @@
+0 vs 0:  {'payoffs': array([ 0.0013, -0.0013]), 'wins': array([ 655,  642]), 'draws': 8703, 'roundlen': 96.4699, 'assafs': array([1, 0])}
+1 vs 1:  {'payoffs': array([ 0.0696, -0.0696]), 'wins': array([5149, 4453]), 'draws': 398, 'roundlen': 44.8264, 'assafs': array([507, 567])}
+2 vs 2:  {'payoffs': array([ 0.0412, -0.0412]), 'wins': array([5206, 4794]), 'draws': 0, 'roundlen': 34.2738, 'assafs': array([846, 867])}
+0 vs 1:  {'payoffs': array([-0.9167,  0.9167]), 'wins': array([ 186, 9353]), 'draws': 461, 'roundlen': 54.7933, 'assafs': array([44,  4])}
+1 vs 0:  {'payoffs': array([ 0.9233, -0.9233]), 'wins': array([9414,  181]), 'draws': 405, 'roundlen': 52.5017, 'assafs': array([ 9, 49])}
+0 vs 2:  {'payoffs': array([-0.9734,  0.9734]), 'wins': array([ 111, 9845]), 'draws': 44, 'roundlen': 42.729, 'assafs': array([25, 29])}
+2 vs 0:  {'payoffs': array([ 0.9788, -0.9788]), 'wins': array([9865,   77]), 'draws': 58, 'roundlen': 41.0752, 'assafs': array([25, 25])}
+1 vs 2:  {'payoffs': array([-0.3151,  0.3151]), 'wins': array([3421, 6572]), 'draws': 7, 'roundlen': 38.9703, 'assafs': array([406, 863])}
+2 vs 1:  {'payoffs': array([ 0.3858, -0.3858]), 'wins': array([6921, 3063]), 'draws': 16, 'roundlen': 39.072, 'assafs': array([838, 389])}
+
+[[0.0655, 0.0186, 0.0111], [0.0181, 0.5149, 0.3421], [0.0077, 0.3063, 0.5206]]
