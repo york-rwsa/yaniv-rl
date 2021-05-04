@@ -1,0 +1,29 @@
+**** HAND CLASS: 5S ****
+{'payoffs': array([ 0.8564, -0.8564]), 'wins': array([9282,  718]), 'draws': 0, 'roundlen': 14.576, 'assafs': array([259, 390])}
+
+**** HAND CLASS: 4K ****
+{'payoffs': array([ 0.6764, -0.6764]), 'wins': array([8382, 1618]), 'draws': 0, 'roundlen': 21.4362, 'assafs': array([511, 605])}
+
+**** HAND CLASS: 4S ****
+{'payoffs': array([ 0.6928, -0.6928]), 'wins': array([8464, 1536]), 'draws': 0, 'roundlen': 21.3494, 'assafs': array([494, 644])}
+
+**** HAND CLASS: 3S2K ****
+{'payoffs': array([ 0.5748, -0.5748]), 'wins': array([7874, 2126]), 'draws': 0, 'roundlen': 24.9446, 'assafs': array([571, 755])}
+
+**** HAND CLASS: 3K2K ****
+{'payoffs': array([ 0.5816, -0.5816]), 'wins': array([7908, 2092]), 'draws': 0, 'roundlen': 24.5796, 'assafs': array([593, 782])}
+
+**** HAND CLASS: 3S ****
+{'payoffs': array([ 0.397, -0.397]), 'wins': array([6985, 3015]), 'draws': 0, 'roundlen': 28.5456, 'assafs': array([703, 805])}
+
+**** HAND CLASS: 3K ****
+{'payoffs': array([ 0.3786, -0.3786]), 'wins': array([6893, 3107]), 'draws': 0, 'roundlen': 28.2782, 'assafs': array([770, 797])}
+
+**** HAND CLASS: 2K2K ****
+{'payoffs': array([ 0.3552, -0.3552]), 'wins': array([6776, 3224]), 'draws': 0, 'roundlen': 28.8312, 'assafs': array([787, 850])}
+
+**** HAND CLASS: 2K ****
+{'payoffs': array([ 0.1028, -0.1028]), 'wins': array([5514, 4486]), 'draws': 0, 'roundlen': 32.9, 'assafs': array([858, 863])}
+
+**** HAND CLASS: X ****
+{'payoffs': array([-0.1206,  0.1206]), 'wins': array([4397, 5603]), 'draws': 0, 'roundlen': 36.2534, 'assafs': array([883, 884])}

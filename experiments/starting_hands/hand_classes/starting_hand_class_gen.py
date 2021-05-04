@@ -174,6 +174,7 @@ allitems = set()
 
 for k, v in hands.items():
     print("len({}) = {}".format(k, len(v)))
+    # print(set(v) & allitems)
     allitems.update(v)
 
 print("len all ", len(allitems))

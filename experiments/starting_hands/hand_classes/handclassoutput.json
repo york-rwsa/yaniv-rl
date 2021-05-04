@@ -1,0 +1,122 @@
+[
+    {
+        "draw_mean": 0.009615384615384616,
+        "player_0_win_mean": 0.7115384615384616,
+        "player_0_assaf_mean": 0.04807692307692308,
+        "player_1_win_mean": 0.27884615384615385,
+        "player_1_assaf_mean": 0.04807692307692308,
+        "player_1_winning_hands_mean": 4.9655172413793105,
+        "player_0_losing_score_mean": 16.517241379310345,
+        "player_0_winning_hands_mean": 5.162162162162162,
+        "player_1_losing_score_mean": 17.5,
+        "handclass": "5S"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.6601941747572816,
+        "player_0_assaf_mean": 0.08737864077669903,
+        "player_1_win_mean": 0.33980582524271846,
+        "player_1_assaf_mean": 0.02912621359223301,
+        "player_0_winning_hands_mean": 5.323529411764706,
+        "player_1_losing_score_mean": 16.205882352941178,
+        "player_1_winning_hands_mean": 5.371428571428571,
+        "player_0_losing_score_mean": 18.17142857142857,
+        "handclass": "4K"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.7904761904761904,
+        "player_0_assaf_mean": 0.02857142857142857,
+        "player_1_win_mean": 0.20952380952380953,
+        "player_1_assaf_mean": 0.05714285714285714,
+        "player_0_winning_hands_mean": 5.421686746987952,
+        "player_1_losing_score_mean": 17.674698795180724,
+        "player_1_winning_hands_mean": 5.318181818181818,
+        "player_0_losing_score_mean": 15.136363636363637,
+        "handclass": "4S"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.865546218487395,
+        "player_0_assaf_mean": 0.04201680672268908,
+        "player_1_win_mean": 0.13445378151260504,
+        "player_1_assaf_mean": 0.05042016806722689,
+        "player_0_winning_hands_mean": 5.067961165048544,
+        "player_1_losing_score_mean": 19.106796116504853,
+        "player_1_winning_hands_mean": 5.5,
+        "player_0_losing_score_mean": 19.3125,
+        "handclass": "3S2K"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.8803418803418803,
+        "player_0_assaf_mean": 0.02564102564102564,
+        "player_1_win_mean": 0.11965811965811966,
+        "player_1_assaf_mean": 0.05128205128205128,
+        "player_0_winning_hands_mean": 5.271844660194175,
+        "player_1_losing_score_mean": 19.145631067961165,
+        "player_1_winning_hands_mean": 4.785714285714286,
+        "player_0_losing_score_mean": 16.714285714285715,
+        "handclass": "3K2K"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.7647058823529411,
+        "player_0_assaf_mean": 0.058823529411764705,
+        "player_1_win_mean": 0.23529411764705882,
+        "player_1_assaf_mean": 0.049019607843137254,
+        "player_0_winning_hands_mean": 5.166666666666667,
+        "player_1_losing_score_mean": 16.243589743589745,
+        "player_1_winning_hands_mean": 4.875,
+        "player_0_losing_score_mean": 18.416666666666668,
+        "handclass": "3S"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.7169811320754716,
+        "player_0_assaf_mean": 0.04716981132075472,
+        "player_1_win_mean": 0.2830188679245283,
+        "player_1_assaf_mean": 0.04716981132075472,
+        "player_1_winning_hands_mean": 5.933333333333334,
+        "player_0_losing_score_mean": 16.7,
+        "player_0_winning_hands_mean": 5.276315789473684,
+        "player_1_losing_score_mean": 16.763157894736842,
+        "handclass": "3K"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.7184466019417476,
+        "player_0_assaf_mean": 0.0970873786407767,
+        "player_1_win_mean": 0.2815533980582524,
+        "player_1_assaf_mean": 0.06796116504854369,
+        "player_0_winning_hands_mean": 5.148648648648648,
+        "player_1_losing_score_mean": 16.83783783783784,
+        "player_1_winning_hands_mean": 5.275862068965517,
+        "player_0_losing_score_mean": 20.75862068965517,
+        "handclass": "2K2K"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.53,
+        "player_0_assaf_mean": 0.02,
+        "player_1_win_mean": 0.47,
+        "player_1_assaf_mean": 0.04,
+        "player_0_winning_hands_mean": 5.660377358490566,
+        "player_1_losing_score_mean": 14.962264150943396,
+        "player_1_winning_hands_mean": 5.595744680851064,
+        "player_0_losing_score_mean": 14.063829787234043,
+        "handclass": "2K"
+    },
+    {
+        "draw_mean": 0.0,
+        "player_0_win_mean": 0.39603960396039606,
+        "player_0_assaf_mean": 0.039603960396039604,
+        "player_1_win_mean": 0.6039603960396039,
+        "player_1_assaf_mean": 0.09900990099009901,
+        "player_1_winning_hands_mean": 5.163934426229508,
+        "player_0_losing_score_mean": 17.62295081967213,
+        "player_0_winning_hands_mean": 5.825,
+        "player_1_losing_score_mean": 18.75,
+        "handclass": "X"
+    }
+]
