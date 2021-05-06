@@ -21,7 +21,8 @@ DEFAULT_GAME_CONFIG = {
     "use_dead_cards_in_state": True,
     "observation_scheme": 0,
     "starting_player": "random",
-    "starting_hands": {}
+    "starting_hands": {},
+    "player_step_fn": {}
 }
 
 
@@ -31,6 +32,7 @@ class YanivEnv(MultiAgentEnv):
         conf = DEFAULT_GAME_CONFIG.copy()
         conf.update(config)
         self.config = conf
+        self.player_step_fn = conf.pop("player_step_fn", {})
         
         self.single_step = self.config.get("single_step", True)
         self.obs_scheme = self.config.get("observation_scheme", 0)
@@ -56,16 +58,19 @@ class YanivEnv(MultiAgentEnv):
         self.reward_range = (-1.0, 1.0)
 
         self.timestep = 0
-        self.current_player = None
+
+    @property
+    def current_player(self):
+        return self.game.round.current_player
 
     @property
     def current_player_string(self):
         return self._get_player_string(self.current_player)
 
     def reset(self):
-        _, player_id = self.game.init_game()
-        self.current_player = player_id
+        self.game.init_game()
         self.timestep = 0
+        self.step_player_fn()
 
         return {
             self.current_player_string: self._get_players_observation(
@@ -73,14 +78,18 @@ class YanivEnv(MultiAgentEnv):
             )
         }
 
+    def step_player_fn(self):
+        while self.current_player_string in self.player_step_fn and not self.game.is_over():
+            self.player_step_fn[self.current_player_string](self)
+
     def step(self, action_dict, raw_action=False):
         action = action_dict[self.current_player_string]
         if not raw_action:
             action = self._decode_action(action)
 
         self.game.step(action)
-        self.current_player = self.game.round.current_player
-
+        self.step_player_fn()
+        
         done = self.game.is_over()
         dones = {p: done for p in self._get_players()}
         dones["__all__"] = done
@@ -234,11 +243,11 @@ class YanivEnv(MultiAgentEnv):
 
         if len(current_player.hand) > 0:
             hand_one_hot = utils.one_hot_encode_cards(current_player.hand)
-            hand_enc[: hand_one_hot.shape[0]] = hand_one_hot
+            hand_enc[:hand_one_hot.shape[0]] = hand_one_hot
 
         if len(known_cards) > 0:
             known_one_hot = utils.one_hot_encode_cards(known_cards)
-            known_enc[: known_one_hot.shape[0]] = known_one_hot
+            known_enc[:known_one_hot.shape[0]] = known_one_hot
 
         opponent_hand_size = np.zeros(6)
         opponent_hand_size[len(next_player.hand)] = 1
