@@ -123,10 +123,10 @@ def main():
             if k.endswith("mean")
         }
         stats["model_number"] = model_num
-        tqdm.write("model: {: <6}: win_mean: {}".format(model_num, stats["player_0_win_mean"]))
+        tqdm.write("model: {: <6}: win_mean: {}, episodes: {}".format(model_num, stats["player_0_win_mean"], metrics['evaluation']['episodes_this_iter']))
         results.append(stats)
 
-    with open("going_first_over_time.json", "w") as f:
+    with open("intermediate_vs_rules.json", "w") as f:
         json.dump(results, f, indent=4)
 
 
