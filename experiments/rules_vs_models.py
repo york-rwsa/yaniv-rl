@@ -1,3 +1,4 @@
+from yaniv_rl.utils.rllib.step_functions import novice_rule_step
 from yaniv_rl import utils
 from tqdm import tqdm
 import json
@@ -17,12 +18,14 @@ from yaniv_rl.utils.rllib import (
     YanivActionMaskModel,
     YanivCallbacks,
     make_eval_func,
-    intermediate_rule_step
+    intermediate_rule_step,
+    novice_rule_step,
 )
 
 
 def policy_mapping_fn(agent_id):
     return "policy_1"
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -32,11 +35,23 @@ def main():
     parser.add_argument("--cpus-per-worker", type=float, default=0.5)
     parser.add_argument("--cpus-for-driver", type=float, default=0.5)
     parser.add_argument("--address", type=str, default=None)
-    parser.add_argument("--model-path", type=str, default="/home/jippo/ray_results/YanivTrainer_2021-05-02_16-44-14/YanivTrainer_yaniv_3ee8a_00000_0_2021-05-02_16-44-14/models")
+    parser.add_argument(
+        "--model-path",
+        type=str,
+        default="/home/jippo/ray_results/YanivTrainer_2021-05-02_16-44-14/YanivTrainer_yaniv_3ee8a_00000_0_2021-05-02_16-44-14/models",
+    )
+    parser.add_argument("--opponent", type=str, default="intermediate")
     args = parser.parse_args()
 
     register_env("yaniv", lambda config: YanivEnv(config))
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
+
+    if args.opponent == "intermediate":
+        stepfn = intermediate_rule_step
+    elif args.opponent == "novice":
+        stepfn = novice_rule_step
+    else:
+        raise ValueError("opponent not defined: {}".format(args.opponent))
 
     env_config = {
         "end_after_n_deck_replacements": 0,
@@ -53,9 +68,7 @@ def main():
         "observation_scheme": 1,
         "n_players": 2,
         "state_n_players": 2,
-        "player_step_fn": {
-            "player_1": intermediate_rule_step
-        }
+        "player_step_fn": {"player_1": stepfn},
     }
 
     env = YanivEnv(env_config)
@@ -74,7 +87,6 @@ def main():
             },
             "policy_mapping_fn": policy_mapping_fn,
             "policies_to_train": ["policy_1"],
-
         },
         "model": {
             "custom_model": "yaniv_mask",
@@ -110,9 +122,9 @@ def main():
             continue
 
         path = os.path.join(models_path, model)
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             policy = pickle.load(f)
-        
+
         trainer.get_policy("policy_1").set_state(policy)
         metrics = trainer._evaluate()
         metrics["evaluation"].pop("hist_stats")
@@ -123,10 +135,16 @@ def main():
             if k.endswith("mean")
         }
         stats["model_number"] = model_num
-        tqdm.write("model: {: <6}: win_mean: {}, episodes: {}".format(model_num, stats["player_0_win_mean"], metrics['evaluation']['episodes_this_iter']))
+        tqdm.write(
+            "model: {: <6}: win_mean: {}, episodes: {}".format(
+                model_num,
+                stats["player_0_win_mean"],
+                metrics["evaluation"]["episodes_this_iter"],
+            )
+        )
         results.append(stats)
 
-    with open("intermediate_vs_rules.json", "w") as f:
+    with open("{}_vs_models_{}.json".format(args.opponent, args.eval_num), "w") as f:
         json.dump(results, f, indent=4)
 
 
