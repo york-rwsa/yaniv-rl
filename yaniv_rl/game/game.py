@@ -1,5 +1,6 @@
 from copy import deepcopy
 from itertools import product
+import random
 import numpy as np
 from numpy.lib.arraysetops import isin
 
@@ -50,7 +51,7 @@ class YanivGame(object):
             player = self.players[pid]
 
             if isinstance(starting_hand, list):
-                starting_hand = np.random.choice(starting_hand)
+                starting_hand = random.choices(starting_hand, k=1)[0]
 
             assert len(starting_hand) == 10
             
