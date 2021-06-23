@@ -75,7 +75,7 @@ env_config = {
     "step_reward": 0,
     "use_unkown_cards_in_state": False,
     "use_dead_cards_in_state": True,
-    "observation_scheme": 0,
+    "observation_scheme": 1,
     "n_players": 2,
     "state_n_players": 2,
 }
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     print("loading pretrained weights")
     trainer_class = get_trainer_class(config["algorithm"])
     resources = trainer_class.default_resource_request(config)
-    weights = get_policy_weights_from_checkpoint(trainer_class, "/home/jippo/Code/yaniv/yaniv-rl/examples/trained_models/A3C_36k_2player/checkpoint-15075")
+    weights = get_policy_weights_from_checkpoint(trainer_class, "/home/jippo/Code/yaniv/yaniv-rl/examples/trained_models/A3C_18k_obs1_2player/checkpoint-18880")
     print("weights loaded\n\n")
 
 
@@ -168,8 +168,6 @@ if __name__ == "__main__":
         name=args.name,
         config=config,
         stop={"training_iteration": 20000},
-        checkpoint_freq=5,
-        checkpoint_at_end=True,
         verbose=Verbosity.V3_TRIAL_DETAILS,
         callbacks=[
             WandbLoggerCallback(
@@ -181,6 +179,8 @@ if __name__ == "__main__":
         ],
         export_formats=[ExportFormat.MODEL],
         restore=args.restore,
-        keep_checkpoints_num=5,
+        checkpoint_freq=100,
+        checkpoint_at_end=True,
+        # keep_checkpoints_num=5,
         max_failures=8,
     )

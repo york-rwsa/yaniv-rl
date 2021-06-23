@@ -5,14 +5,23 @@ from yaniv_rl.game import Game
 from yaniv_rl import utils
 
 DEFAULT_GAME_CONFIG = {
+    "n_players": 2,
+    "state_n_players": 2,
     "end_after_n_deck_replacements": 0,
     "end_after_n_steps": 100,
-    "early_end_reward": -1,
+    "early_end_reward": 0,
     "use_scaled_negative_reward": False,
+    "use_scaled_positive_reward": False,
     "max_negative_reward": -1,
     "negative_score_cutoff": 50,
+    "single_step": True,
+    "step_reward": 0,
+    "use_unkown_cards_in_state": True,
+    "use_dead_cards_in_state": True,
+    "observation_scheme": 0,
+    "starting_player": "random",
+    "starting_hands": {}
 }
-
 
 def calculate_reward(state, next_state, action):
     if action not in utils.pickup_actions and len(action) > 2:

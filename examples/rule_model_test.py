@@ -17,7 +17,8 @@ episode_num = 2
 # Set a global seed
 set_global_seed(0)
 env.set_agents([
-    YanivNoviceRuleAgent(),
+    # YanivNoviceRuleAgent(),
+    YanivIntermediateRuleAgent(),
     YanivIntermediateRuleAgent()
 ])
 

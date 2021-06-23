@@ -1,5 +1,6 @@
 import ray
 from ray import tune
+from ray.rllib.agents.registry import get_trainer_class
 from ray.tune import register_env
 from ray.tune.trial import ExportFormat
 from ray.tune.utils.log import Verbosity
@@ -59,15 +60,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-iters", type=int, default=10)
     parser.add_argument("--train", type=bool, default=True)
-    parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--num-gpus", type=float, default=1.0)
+    parser.add_argument("--num-workers", type=int, default=1)
+    parser.add_argument("--num-gpus", type=int, default=1)
     parser.add_argument("--eval-num", type=int, default=200)
     parser.add_argument("--eval-every", type=int, default=5)
     parser.add_argument("--random-players", type=int, default=0)
     parser.add_argument("--restore", type=str, default="")
     parser.add_argument("--wandb-id", type=str, default=None)
     parser.add_argument("--name", type=str, default="")
-
+    parser.add_argument("--address", type=str, default=None)
+    
     args = parser.parse_args()
 
     print("cuda: ")
@@ -75,9 +77,13 @@ if __name__ == "__main__":
 
     ray.init(
         local_mode=False,
+        address=args.address
     )
 
     register_env("yaniv", lambda config: YanivEnv(config))
+
+    from yaniv_rl.utils.rllib.model import DQNYanivActionMaskModel
+    
     ModelCatalog.register_custom_model("yaniv_mask", YanivActionMaskModel)
 
     env = YanivEnv(env_config)
@@ -85,15 +91,14 @@ if __name__ == "__main__":
     act_space = env.action_space
 
     config = {
-        "algorithm": "A3C",
         "env": "yaniv",
         "env_config": env_config,
         "framework": "torch",
         "num_gpus": args.num_gpus,
         "num_workers": args.num_workers,
-        "num_envs_per_worker": 1,
-        "num_cpus_per_worker": 0.5,
-        "num_cpus_for_driver": 0.5,
+        # "num_envs_per_worker": 1,
+        # "num_cpus_per_worker": 1,
+        # "num_cpus_for_driver": 1,
         "multiagent": {
             "policies": {
                 "policy_1": (None, obs_space, act_space, {}),
@@ -105,7 +110,7 @@ if __name__ == "__main__":
             "policies_to_train": ["policy_1"],
         },
         "callbacks": YanivCallbacks,
-        # "log_level": "INFO",
+        "log_level": "INFO",
         "evaluation_num_workers": 0,
         "evaluation_config": {"explore": False},
         "evaluation_interval": args.eval_every,
@@ -114,16 +119,37 @@ if __name__ == "__main__":
         # hyper params
         "model": {
             "custom_model": "yaniv_mask",
-            "fcnet_hiddens": [512, 512],
+            "fcnet_hiddens": [],
         },
         "batch_mode": "complete_episodes",
-        "rollout_fragment_length": 100,
-        # "train_batch_size": 32768,
-        # "num_sgd_iter": 20,
+
+        # A3c
+        # "algorithm": "A3C",
+        # "rollout_fragment_length": 50,
+        # "train_batch_size": 500,
+        # "min_iter_time_s": 10,
+        
+        # ppo
+        # "algorithm": "PPO",
         # "sgd_minibatch_size": 2048,
+        # "train_batch_size": 65536,
+        # "rollout_fragment_length": 100
+
+        # dqn
+        "algorithm": "APEX",
+        "train_batch_size": 4096,
+        "dueling": False,
+        "hiddens": [],
+        ""
+        # "double_q": False,
     }
 
-    resources = PPOTrainer.default_resource_request(config)
+    trainer_class = get_trainer_class(config["algorithm"])
+    # config.pop("algorithm")
+    # trainer = trainer_class(env="yaniv", config=config)
+    # trainer.train()
+    
+    resources = trainer_class.default_resource_request(config)
 
     results = tune.run(
         YanivTrainer,
@@ -147,3 +173,4 @@ if __name__ == "__main__":
         keep_checkpoints_num=5,
         max_failures=8,
     )
+

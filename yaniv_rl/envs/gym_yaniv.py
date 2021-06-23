@@ -7,7 +7,7 @@ from gym import spaces
 from gym.envs.registration import register
 
 register(
-    id="Yaniv-v0",
+    id="Yaniv-v1",
     entry_point="yaniv_rl.envs.gym_yaniv:YanivEnv",
 )
 
@@ -35,27 +35,18 @@ class YanivEnv(gym.Env):
         conf.update(config)
         self.game.configure(conf)
 
-        single_aspace = spaces.Discrete(self.game.get_action_num())
-        self.action_space = spaces.Tuple(
-            [single_aspace for _ in range(self.num_players)]
-        )
-
-        single_obs = spaces.Box(shape=(266,), low=0, high=1, dtype=int)
-        self.observation_space = spaces.Tuple(
-            [single_obs for _ in range(self.num_players)]
-        )
-
+        self.action_space = spaces.Discrete(self.game.get_action_num())
+        self.observation_space = spaces.Box(shape=(266,), low=0, high=1, dtype=int)
+        
         self.timestep = 0
         self.current_player = None
 
     def reset(self):
         state, player_id = self.game.init_game()
         self.current_player = player_id
+        self.timestep = 0
 
-        return self._get_observations(), {
-            "current_player": player_id,
-            "legal_actions": self._get_legal_actions(),
-        }
+        return self._get_observations(), self._get_infos()
 
     def step(self, action, raw_action=False):
         if not raw_action:
@@ -75,11 +66,18 @@ class YanivEnv(gym.Env):
             self._get_observations(),
             rewards,
             done,
-            {
-                "current_player": player_id,
-                "legal_actions": self._get_legal_actions(),
-            },
+            self._get_infos(),
         )
+
+    def _get_infos(self):
+        _, action_masks = self._get_legal_actions()
+        infos = []
+        for i in range(self.num_players):
+            info = {}
+            info['legal_actions'] = action_masks[i]
+            info['action_mask'] = action_masks[i]
+        
+        return infos
 
     def _get_observations(self):
         observations = []
@@ -102,10 +100,13 @@ class YanivEnv(gym.Env):
         else:
             legal_ids = [utils.ACTION_SPACE[action] for action in legal_actions]
 
-        return legal_ids
+        action_masks = [np.zeros(self.action_space.n) for _ in range(self.num_players)]
+        np.put(action_masks[self.current_player], ind=legal_ids, v=1)
+
+        return legal_ids, action_masks
 
     def get_moves(self):
-        return self._get_legal_actions()
+        return self._get_legal_actions()[0]
 
     def _extract_state(self, player_id):
         if self.game.is_over():
@@ -147,6 +148,9 @@ class YanivEnv(gym.Env):
         state = self.game.get_state(self.current_player)
         _print_state(state, [])
 
+    def seed(self, seed=None):
+        self._seed = seed
+        np.random.seed(seed)
 
 def _print_state(state, action_record):
     """Print out the state of a given player
